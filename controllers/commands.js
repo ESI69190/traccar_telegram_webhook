@@ -25,7 +25,7 @@ export async function handleCommands(chatId, text, locale) {
     return;
   }
 
-  const devices = await getDevicesForUser(chatId, user.id);
+  const devices = await getDevicesForUser(chatId);
   const device = devices.find(d => 
     d.name?.toLowerCase() === deviceId.toLowerCase() || 
     d.uniqueId?.toLowerCase() === deviceId.toLowerCase()
