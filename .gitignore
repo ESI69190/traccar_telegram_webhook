@@ -1,2 +1,4 @@
-traccar-api.yaml
 .env
+*.log
+node_modules
+dist
