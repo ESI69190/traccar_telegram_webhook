@@ -59,9 +59,7 @@ services:
       - autoheal=true
 
   telegram-webhook:
-    build:
-      context: .
-      dockerfile: dockerfile
+    image: ghcr.io/esi69190/traccar_telegram_webhook:latest
     container_name: telegram-webhook
     restart: unless-stopped
     environment:
