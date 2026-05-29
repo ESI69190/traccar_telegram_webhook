@@ -1,0 +1,51 @@
+# PROJECT RULES
+
+## General
+- This project is a Dockerized Node.js webhook service.
+- No UI routes are expected unless explicitly defined.
+- Prefer simplicity over abstraction.
+
+## Git
+- Use conventional commits when possible:
+  feat: add feature
+  fix: bug fix
+  chore: maintenance
+- Never commit secrets (.env, tokens, keys).
+- Always ensure builds are reproducible from GitHub.
+
+## Docker
+- Images are built via GitHub Actions only.
+- Local builds are allowed for debugging only.
+- Do not rely on local node_modules inside containers.
+- Always use explicit image tags in production deployments.
+
+## CI/CD
+- GitHub Actions is the single source of truth for builds.
+- Every push to main triggers:
+  1. Docker build
+  2. Push to GHCR
+  3. SSH deployment to server
+
+## Deployment
+- Server uses docker-compose only.
+- No manual container configuration on production.
+- Deployment must always be idempotent.
+
+## Secrets
+- All secrets must be stored in GitHub Secrets.
+- Never hardcode credentials in source code.
+
+## Code style
+- Keep services modular (controllers / services / router separation).
+- Avoid over-engineering.
+- Prefer explicit code over magic behavior.
+
+## Debugging
+- Use docker logs for runtime issues.
+- Use GitHub Actions logs for build issues.
+- Use SSH only for deployment or emergency recovery.
+
+
+## Versioning
+- Prefer tagging releases using git SHA or semver.
+- Avoid relying on `latest` in critical environments.
