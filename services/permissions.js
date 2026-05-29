@@ -2,19 +2,23 @@
 import { traccarRequest } from "./traccar.js";
 
 /**
- * Deprecated: original method used /api/permissions which may not be available.
- * Kept for backward compatibility but returns empty array.
+ * Get device IDs accessible to a user via Traccar permissions API.
  */
 export async function getDeviceIdsForUser(userId) {
-  // Return empty array to avoid using unsupported endpoint.
-  return [];
+  const resp = await traccarRequest("get", `/api/permissions?userId=${userId}`);
+  if (resp.status !== 200) return [];
+  // Traccar returns array of { deviceId: number, userId: number }
+  const perms = resp.data || [];
+  return perms
+    .filter((p) => p.deviceId)
+    .map((p) => p.deviceId);
 }
 
 /**
- * Get devices accessible to a user based on the telegramOwner attribute.
- * Devices must have the attribute `telegramOwner` equal to the provided chat ID.
+ * Get devices accessible to a user.
+ * First tries Traccar's native permissions, then falls back to telegramOwner attribute.
  */
-export async function getDevicesForUser(chatId) {
+export async function getDevicesForUser(chatId, userId) {
   if (!chatId) return [];
 
   // Retrieve all devices
@@ -24,7 +28,18 @@ export async function getDevicesForUser(chatId) {
   const devices = devicesResp.data || [];
   console.log(`[permissions] Fetched ${devices.length} total devices from Traccar`);
 
-  // Filter devices where telegramOwner attribute matches the chat ID
+  // Method 1: If userId provided, try Traccar native permissions
+  if (userId) {
+    const allowedIds = await getDeviceIdsForUser(userId);
+    console.log(`[permissions] Traccar permissions returned device IDs:`, allowedIds);
+    if (allowedIds.length > 0) {
+      const filtered = devices.filter((d) => allowedIds.includes(d.id));
+      console.log(`[permissions] Found ${filtered.length} device(s) via Traccar permissions for userId ${userId}`);
+      if (filtered.length > 0) return filtered;
+    }
+  }
+
+  // Method 2: Fall back to telegramOwner attribute matching chatId
   const filtered = devices.filter(
     (d) =>
       d?.attributes?.telegramOwner &&
@@ -35,7 +50,7 @@ export async function getDevicesForUser(chatId) {
     console.log(`[permissions] No devices with telegramOwner=${chatId} found.`);
     console.log(`[permissions] Devices found:`, devices.map(d => ({ id: d.id, name: d.name, attrs: d.attributes })));
   } else {
-    console.log(`[permissions] Found ${filtered.length} device(s) for chatId ${chatId}`);
+    console.log(`[permissions] Found ${filtered.length} device(s) via telegramOwner for chatId ${chatId}`);
   }
 
   return filtered;
