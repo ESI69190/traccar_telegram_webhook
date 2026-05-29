@@ -43,7 +43,18 @@ export const TRANSLATIONS = {
       "Share your contact to associate your account (international format recommended).",
     no_positions: "No positions available.",
     engine_command_sent: "Engine command sent.",
-    engine_command_failed: "Engine command failed."
+    engine_command_failed: "Engine command failed.",
+    commands_usage: "Usage: /commands <deviceId> <commandType>",
+    command_sent: "Command sent successfully.",
+    command_failed: "Failed to send command.",
+    orders_usage: "Usage: /orders get|create|update|delete [params]",
+    order_created: "Order created successfully.",
+    order_updated: "Order updated successfully.",
+    order_deleted: "Order deleted successfully.",
+    order_failed: "Failed to process order.",
+    positions_usage: "Usage: /positions <id> [limit]",
+    positions_for: "Positions for",
+    reports_usage: "Usage: /reports <type>\nTypes: route, events, geofences, summary, trips, stops"
   },
   fr: {
     start_intro: "Commandes disponibles :",
@@ -91,6 +102,17 @@ export const TRANSLATIONS = {
       "Partagez votre contact pour associer votre compte (format international recommandé).",
     no_positions: "Aucune position disponible.",
     engine_command_sent: "Commande moteur envoyée.",
-    engine_command_failed: "Échec de la commande moteur."
+    engine_command_failed: "Échec de la commande moteur.",
+    commands_usage: "Usage : /commands <id> <type>",
+    command_sent: "Commande envoyée avec succès.",
+    command_failed: "Échec de l'envoi de la commande.",
+    orders_usage: "Usage : /orders get|create|update|delete [params]",
+    order_created: "Commande créée avec succès.",
+    order_updated: "Commande mise à jour avec succès.",
+    order_deleted: "Commande supprimée avec succès.",
+    order_failed: "Échec du traitement de la commande.",
+    positions_usage: "Usage : /positions <id> [limite]",
+    positions_for: "Positions pour",
+    reports_usage: "Usage : /reports <type>\nTypes: route, events, geofences, summary, trips, stops"
   }
 };

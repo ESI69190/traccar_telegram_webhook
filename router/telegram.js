@@ -7,6 +7,10 @@ import { handleTrack } from "../controllers/track.js";
 import { handleHistory } from "../controllers/history.js";
 import { handleStatus } from "../controllers/status.js";
 import { handleEngine } from "../controllers/engine.js";
+import { handlePositions } from "../controllers/positions.js";
+import { handleCommands } from "../controllers/commands.js";
+import { handleOrders } from "../controllers/orders.js";
+import { handleReports } from "../controllers/reports.js";
 
 export async function handleTelegramUpdate(req, res) {
   try {
@@ -58,6 +62,26 @@ export async function handleTelegramUpdate(req, res) {
 
     if (text.startsWith("/engine")) {
       await handleEngine(chatId, text, locale);
+      return res.sendStatus(200);
+    }
+
+    if (text.startsWith("/commands")) {
+      await handleCommands(chatId, text, locale);
+      return res.sendStatus(200);
+    }
+
+    if (text.startsWith("/orders")) {
+      await handleOrders(chatId, text, locale);
+      return res.sendStatus(200);
+    }
+
+    if (text.startsWith("/positions")) {
+      await handlePositions(chatId, text, locale);
+      return res.sendStatus(200);
+    }
+
+    if (text.startsWith("/reports")) {
+      await handleReports(chatId, text, locale);
       return res.sendStatus(200);
     }
 
