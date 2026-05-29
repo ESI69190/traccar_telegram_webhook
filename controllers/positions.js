@@ -21,7 +21,7 @@ export async function handlePositions(chatId, text, locale) {
     return;
   }
 
-  const devices = await getDevicesForUser(chatId);
+  const devices = await getDevicesForUser(chatId, user.id);
   const device = devices.find(
     d => d.name?.toLowerCase() === identifier.toLowerCase() ||
          d.uniqueId?.toLowerCase() === identifier.toLowerCase()
