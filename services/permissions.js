@@ -12,16 +12,9 @@ export async function getDeviceIdsForUser(userId) {
 
 /**
  * Get devices accessible to a user based on the telegramOwner attribute.
- * The Traccar user must have the attribute `telegramChatId` set.
- * Devices must have the attribute `telegramOwner` equal to that chat ID.
+ * Devices must have the attribute `telegramOwner` equal to the provided chat ID.
  */
-export async function getDevicesForUser(userId) {
-  // Retrieve the user to obtain the telegramChatId
-  const userResp = await traccarRequest("get", `/api/users/${userId}`);
-  if (userResp.status !== 200) return [];
-
-  const user = userResp.data;
-  const chatId = user?.attributes?.telegramChatId;
+export async function getDevicesForUser(chatId) {
   if (!chatId) return [];
 
   // Retrieve all devices
@@ -30,7 +23,7 @@ export async function getDevicesForUser(userId) {
 
   const devices = devicesResp.data || [];
 
-  // Filter devices where telegramOwner attribute matches the user's chat ID
+  // Filter devices where telegramOwner attribute matches the chat ID
   return devices.filter(
     (d) =>
       d?.attributes?.telegramOwner &&

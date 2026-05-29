@@ -24,7 +24,7 @@ export async function handleHistory(chatId, text, locale) {
     return;
   }
 
-  const devices = await getDevicesForUser(user.id);
+  const devices = await getDevicesForUser(chatId);
   const device = devices.find(
     (d) =>
       d.name?.toLowerCase() === identifier.toLowerCase() ||

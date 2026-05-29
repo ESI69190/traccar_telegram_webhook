@@ -20,7 +20,7 @@ export async function handleTrack(chatId, text, locale) {
       return;
     }
 
-    const devices = await getDevicesForUser(user.id);
+    const devices = await getDevicesForUser(chatId);
     if (!devices.length) {
       await telegramSendMessage(
         chatId,
