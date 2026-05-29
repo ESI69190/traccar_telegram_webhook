@@ -22,11 +22,21 @@ export async function getDevicesForUser(chatId) {
   if (devicesResp.status !== 200) return [];
 
   const devices = devicesResp.data || [];
+  console.log(`[permissions] Fetched ${devices.length} total devices from Traccar`);
 
   // Filter devices where telegramOwner attribute matches the chat ID
-  return devices.filter(
+  const filtered = devices.filter(
     (d) =>
       d?.attributes?.telegramOwner &&
       String(d.attributes.telegramOwner) === String(chatId)
   );
+
+  if (!filtered.length) {
+    console.log(`[permissions] No devices with telegramOwner=${chatId} found.`);
+    console.log(`[permissions] Devices found:`, devices.map(d => ({ id: d.id, name: d.name, attrs: d.attributes })));
+  } else {
+    console.log(`[permissions] Found ${filtered.length} device(s) for chatId ${chatId}`);
+  }
+
+  return filtered;
 }
