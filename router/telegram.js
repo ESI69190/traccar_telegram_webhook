@@ -9,7 +9,7 @@ import { handleStatus } from "../controllers/status.js";
 import { handleEngine } from "../controllers/engine.js";
 import { handlePositions } from "../controllers/positions.js";
 import { handleCommands } from "../controllers/commands.js";
-import { handleOrders } from "../controllers/orders.js";
+import handleOrders from "../controllers/orders.js";
 import { handleReports } from "../controllers/reports.js";
 
 export async function handleTelegramUpdate(req, res) {
