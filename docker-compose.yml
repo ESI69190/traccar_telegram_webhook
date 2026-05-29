@@ -67,6 +67,7 @@ services:
       TRACCAR_USER: ${TRACCAR_USER}
       TRACCAR_PASS: ${TRACCAR_PASS}
       BOT_TOKEN: ${TELEGRAM_TOKEN}
+      ASSOC_SECRET: ${ASSOC_SECRET}
     ports:
       - "3000:3000"
     networks:
