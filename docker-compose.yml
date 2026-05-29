@@ -1,0 +1,81 @@
+services:
+
+  database:
+    image: timescale/timescaledb:latest-pg16
+    container_name: traccar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TIMESCALEDB_TELEMETRY: "off"
+    volumes:
+      - /opt/traccar/data:/var/lib/postgresql/data
+    networks:
+      - traccar
+    labels:
+      - autoheal=true
+      - wud.watch=false
+
+  traccar:
+    image: traccar/traccar:latest
+    container_name: traccar
+    restart: unless-stopped
+    depends_on:
+      - database
+    environment:
+      CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
+      DATABASE_DRIVER: org.postgresql.Driver
+      DATABASE_URL: jdbc:postgresql://database:5432/${POSTGRES_DB}
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      WEB_OVERRIDE: ./override
+      GEOCODER_ENABLE: true
+      GEOCODER_TYPE: ban
+      GEOLOCATION_ENABLE: true
+      GEOLOCATION_TYPE: opencellid
+      GEOLOCATION_KEY: ${GEOLOCATION_KEY}
+      NOTIFICATOR_TYPES: traccar,web,telegram
+      NOTIFICATOR_TELEGRAM_KEY: ${TELEGRAM_TOKEN}
+      LOG_LEVEL: debug
+      LOGGER_CONSOLE: true
+      WEB_DEBUG: true
+      LOGGER_LEVEL: warning
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health"]
+      interval: 2m
+      timeout: 5s
+      start_period: 1h
+      retries: 3
+    ports:
+      - "8082:8082"
+      - "5000-5500:5000-5500"
+    volumes:
+      - /opt/traccar/logs:/opt/traccar/logs
+      - /opt/traccar/branding:/opt/traccar/override:rw
+    networks:
+      - traccar
+    labels:
+      - autoheal=true
+
+  telegram-webhook:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: telegram-webhook
+    restart: unless-stopped
+    environment:
+      TRACCAR_URL: http://traccar:8082
+      TRACCAR_USER: ${TRACCAR_USER}
+      TRACCAR_PASS: ${TRACCAR_PASS}
+      BOT_TOKEN: ${TELEGRAM_TOKEN}
+    ports:
+      - "3000:3000"
+    networks:
+      - traccar
+    labels:
+      - autoheal=true
+
+networks:
+  traccar:
+    driver: bridge
