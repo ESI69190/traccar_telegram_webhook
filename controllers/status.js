@@ -23,7 +23,7 @@ export async function handleStatus(chatId, text, locale) {
     return;
   }
 
-  const devices = await getDevicesForUser(chatId, user.id);
+  const devices = await getDevicesForUser(chatId);
   const device = devices.find(
     (d) =>
       d.name?.toLowerCase() === identifier.toLowerCase() ||

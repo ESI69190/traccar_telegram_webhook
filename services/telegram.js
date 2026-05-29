@@ -17,7 +17,7 @@ export async function telegramSendMessage(chatId, text, options) {
     const payload = {
       chat_id: chatId,
       text,
-      parse_mode: options?.parse_mode || "Markdown",
+      parse_mode: options?.parse_mode || null,
       reply_markup: options?.reply_markup
     };
     const resp = await axios.post(TELEGRAM_API + "/sendMessage", payload, {
