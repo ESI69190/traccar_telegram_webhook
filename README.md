@@ -1,6 +1,6 @@
 🚀 Traccar Telegram Bot
 Telegram bot to interact with a Traccar 6.x server.
-Provides secure user association, per-user device access via device attributes, tracking, history, status and engine commands. Designed for modularity, internationalization, and safe association flows.
+Provides secure user association, per-user device access via device attributes, tracking, history, status, engine commands and orders. Designed for modularity, internationalization, safe association flows and server-side authorization.
 
 Features
 User association
@@ -9,7 +9,9 @@ User association
 
 /assoc telegram (Telegram contact share)
 
-Optional secure confirmation using AES-256-CBC encrypted password when ASSOC_SECRET is set
+Secure confirmation using AES-256-CBC encrypted password when ASSOC_SECRET is set
+
+In production, ASSOC_SECRET is required; contact-only association is disabled to prevent account takeover.
 
 Updates Traccar user attributes: telegramChatId and phone
 
@@ -21,7 +23,7 @@ Tracking and device info
 
 History
 
-/history <id> [n] — last n positions (default 5)
+/history <id> [n] — last n positions (default 5, capped at 50)
 
 Status
 
@@ -30,6 +32,16 @@ Status
 Engine commands
 
 /engine <id> on|off — sends engineResume or engineStop via Traccar /api/commands/send
+
+Orders
+
+/orders get [limit] [offset] [keyword] — list the authenticated user's orders
+
+/orders create <name> <description> <start> <end> — create an order scoped to the authenticated user
+
+/orders update <id> <name> <description> <start> <end> — update an order after verifying ownership
+
+/orders delete <id> — delete an order after verifying ownership
 
 Internationalization
 
@@ -83,10 +95,14 @@ TRACCAR_URL=http://traccar:8082
 TRACCAR_USER=admin
 TRACCAR_PASS=your_traccar_password
 BOT_TOKEN=123456:ABC-DEF...
-ASSOC_SECRET=optional-32+chars-secret
+BOT_SECRET=your_webhook_secret
+ASSOC_SECRET=your-32+chars-secret
 PORT=3000
+NODE_ENV=production
 
-ASSOC_SECRET is optional but recommended. When set, /assoc expects an AES-256-CBC encrypted password (IV + ciphertext base64) as confirmation to avoid sending plain passwords in chat.
+BOT_SECRET is required in production. The webhook rejects requests when BOT_SECRET is missing in production or when the X-Telegram-Bot-Api-Secret-Token header does not match.
+
+ASSOC_SECRET is required in production. When set, /assoc expects an AES-256-CBC encrypted password (IV + ciphertext base64) as confirmation to avoid sending plain passwords in chat. In production, contact-only association is disabled to prevent account takeover.
 
 Docker example
 version: "3.8"
@@ -139,20 +155,30 @@ To associate a device to a Telegram user, add the attribute in Traccar device se
 telegramOwner = 123456789
 
 Security considerations
-Encrypted association: If ASSOC_SECRET is set, the client must encrypt the Traccar account password with AES-256-CBC (16-byte IV prefixed to ciphertext, both base64-encoded) and send it as /assoc <phone> <encryptedPasswordBase64>.
+Webhook authentication: Configure BOT_SECRET and set the Telegram webhook secret_token. In production, the webhook rejects all requests if BOT_SECRET is not configured.
 
-No plaintext passwords in chat.
+Encrypted association: ASSOC_SECRET is required in production. The client must encrypt the Traccar account password with AES-256-CBC (16-byte IV prefixed to ciphertext, both base64-encoded) and send it as /assoc <phone> <encryptedPasswordBase64>. Contact-only association is disabled in production to prevent account takeover.
+
+No plaintext passwords in chat or logs. Decrypted passwords are cleared from memory immediately after use.
+
+Server-side authorization: The Traccar API is accessed through a service account, so the application enforces its own authorization. Orders can only be read, updated or deleted by their owning Traccar user, and created orders are always scoped to the authenticated Telegram user.
+
+Device access is enforced by filtering devices where the telegramOwner attribute equals the Telegram chat id.
 
 Dedicated bot account recommended.
 
-Audit logs recommended.
+Audit logs recommended. Error logs contain only the error message and response status; request bodies, headers, credentials and full AxiosError objects are never logged.
 
 Testing
+Automated tests
+
+npm test
+
 Start the bot and ensure it logs “Traccar Telegram bot listening on port”.
 
 Send /start in Telegram.
 
-Use /assoc telegram and share contact or /assoc +123456789.
+Use /assoc telegram and share contact or /assoc +123456789 (secure confirmation required when ASSOC_SECRET is set).
 
 Set telegramOwner attribute on a device to the chat id.
 
