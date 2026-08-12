@@ -31,7 +31,7 @@ export async function getDevicesForUser(chatId) {
   if (!filtered.length) {
     console.log(`[permissions] No devices with telegramOwner=${chatId} found.`);
     if (devices.length > 0) {
-      console.log(`[permissions] Devices found:`, devices.map(d => ({ id: d.id, name: d.name, attrs: d.attributes })));
+      console.log(`[permissions] Devices found:`, devices.map(d => ({ id: d.id, name: d.name })));
     }
   } else {
     console.log(`[permissions] Found ${filtered.length} device(s) for chatId ${chatId}`);

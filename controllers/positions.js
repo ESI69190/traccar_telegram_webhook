@@ -3,12 +3,12 @@ import { t } from "../services/i18n.js";
 import { findUserByChatId, traccarRequest } from "../services/traccar.js";
 import { getDevicesForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
-import { formatDate } from "../services/security.js";
+import { formatDate, MAX_LIMIT } from "../services/security.js";
 
 export async function handlePositions(chatId, text, locale) {
   const parts = text.split(/\s+/);
   const identifier = parts[1];
-  const limit = parts[2] ? parseInt(parts[2], 10) : 5;
+  const n = parts[2] ? parseInt(parts[2], 10) : 5;
 
   if (!identifier) {
     await telegramSendMessage(chatId, t(locale, "positions_usage"));
@@ -32,6 +32,7 @@ export async function handlePositions(chatId, text, locale) {
     return;
   }
 
+  const limit = Math.min(Math.max(isNaN(n) || n <= 0 ? 5 : n, 1), MAX_LIMIT);
   const resp = await traccarRequest(
     "get",
     `/api/positions?deviceId=${device.id}&limit=${limit}`
