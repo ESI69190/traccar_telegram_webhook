@@ -3,7 +3,7 @@ import { t } from "../services/i18n.js";
 import { findUserByChatId, traccarRequest } from "../services/traccar.js";
 import { getDevicesForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
-import { formatDate, MAX_LIMIT } from "../services/security.js";
+import { formatDate, MAX_LIMIT, escapeMarkdown } from "../services/security.js";
 
 export async function handlePositions(chatId, text, locale) {
   const parts = text.split(/\s+/);
@@ -28,7 +28,7 @@ export async function handlePositions(chatId, text, locale) {
   );
 
   if (!device) {
-    await telegramSendMessage(chatId, t(locale, "track_device_not_found") + identifier);
+    await telegramSendMessage(chatId, t(locale, "track_device_not_found") + escapeMarkdown(identifier));
     return;
   }
 
@@ -49,13 +49,13 @@ export async function handlePositions(chatId, text, locale) {
     return;
   }
 
-  let out = t(locale, "positions_for") + " " + (device.name || device.uniqueId) + ":\n";
+  let out = t(locale, "positions_for") + " " + escapeMarkdown(device.name || device.uniqueId) + ":\n";
   positions.forEach((p, idx) => {
     const time = p.serverTime || p.fixTime || p.time || p.deviceTime || null;
     out += `\n#${idx + 1}:\n`;
-    if (time) out += `- Date: ${formatDate(time)}\n`;
+    if (time) out += `- Date: ${escapeMarkdown(formatDate(time))}\n`;
     out += `- Coordinates: [${p.latitude}, ${p.longitude}]`;
-    out += `\n- Speed: ${p.speed || 0} km/h\n`;
+    out += `\n- Speed: ${escapeMarkdown(p.speed || 0)} km/h\n`;
   });
 
   await telegramSendMessage(chatId, out, { parse_mode: "Markdown" });

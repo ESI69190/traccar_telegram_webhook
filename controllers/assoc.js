@@ -4,7 +4,8 @@ import {
   normalizePhone,
   isValidEmail,
   decryptAssocPassword,
-  redactPhone
+  redactPhone,
+  escapeMarkdown
 } from "../services/security.js";
 import {
   findUserByPhone,
@@ -130,7 +131,7 @@ export async function handleAssoc(chatId, msg, locale) {
               await telegramSendMessage(
                 chatId,
                 t(locale, "assoc_confirm_success") +
-                  (upd.user.name || userByPhone.email || userByPhone.id)
+                  escapeMarkdown(upd.user.name || userByPhone.email || userByPhone.id)
               );
             } else {
               await telegramSendMessage(chatId, t(locale, "generic_error"));
@@ -172,7 +173,7 @@ export async function handleAssoc(chatId, msg, locale) {
           await telegramSendMessage(
             chatId,
             t(locale, "assoc_found_and_updated") +
-              (upd.user.name || upd.user.email || user.id)
+              escapeMarkdown(upd.user.name || upd.user.email || user.id)
           );
         } else {
           await telegramSendMessage(chatId, t(locale, "generic_error"));
@@ -224,7 +225,7 @@ export async function handleAssoc(chatId, msg, locale) {
         await telegramSendMessage(
           chatId,
           t(locale, "assoc_found_and_updated") +
-            (upd1.user.name || upd1.user.email || userByPhone.id)
+            escapeMarkdown(upd1.user.name || upd1.user.email || userByPhone.id)
         );
       } else {
         await telegramSendMessage(chatId, t(locale, "generic_error"));
@@ -278,7 +279,7 @@ export async function handleAssoc(chatId, msg, locale) {
               await telegramSendMessage(
                 chatId,
                 t(locale, "assoc_confirm_success") +
-                  (upd.user.name || userByPhone.email || userByPhone.id)
+                  escapeMarkdown(upd.user.name || userByPhone.email || userByPhone.id)
               );
             } else {
               await telegramSendMessage(chatId, t(locale, "generic_error"));
@@ -380,7 +381,7 @@ export async function handleAssoc(chatId, msg, locale) {
         await telegramSendMessage(
           chatId,
           t(locale, "assoc_updated_by_email") +
-            (upd2.user.name || candidateEmail)
+            escapeMarkdown(upd2.user.name || candidateEmail)
         );
       } else {
         await telegramSendMessage(chatId, t(locale, "generic_error"));

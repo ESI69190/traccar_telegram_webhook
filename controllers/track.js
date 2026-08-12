@@ -7,7 +7,7 @@ import {
 } from "../services/traccar.js";
 import { getDevicesForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
-import { formatDate } from "../services/security.js";
+import { formatDate, escapeMarkdown } from "../services/security.js";
 
 const SENSITIVE_ATTRS = new Set([
   "telegramOwner",
@@ -38,7 +38,7 @@ export async function handleTrack(chatId, text, locale) {
     }
 
     const lines = devices.map(
-      (d) => "- " + (d.name || d.uniqueId || "id:" + d.id) + " (id:" + d.id + ")"
+      (d) => "- " + escapeMarkdown(d.name || d.uniqueId || "id:" + d.id) + " (id:" + d.id + ")"
     );
     await telegramSendMessage(
       chatId,
@@ -58,7 +58,7 @@ export async function handleTrack(chatId, text, locale) {
   if (!device) {
     await telegramSendMessage(
       chatId,
-      t(locale, "track_device_not_found") + identifier
+      t(locale, "track_device_not_found") + escapeMarkdown(identifier)
     );
     return;
   }
@@ -67,7 +67,7 @@ export async function handleTrack(chatId, text, locale) {
   if (!isAuthorized) {
     await telegramSendMessage(
       chatId,
-      t(locale, "track_device_not_found") + identifier
+      t(locale, "track_device_not_found") + escapeMarkdown(identifier)
     );
     return;
   }
@@ -79,7 +79,7 @@ export async function handleTrack(chatId, text, locale) {
     "*" +
     t(locale, "track_device_info_title") +
     "* : " +
-    (device.name || device.uniqueId) +
+    escapeMarkdown(device.name || device.uniqueId) +
     "\n";
   out += "ID: " + String(device.id) + "\n";
 
@@ -97,7 +97,7 @@ export async function handleTrack(chatId, text, locale) {
       (speed && Number(speed) > 0) || ignition ? "Moving" : "Stopped";
 
     out += "\n*Last position*:\n";
-    if (time) out += "- Date: " + formatDate(time) + "\n";
+    if (time) out += "- Date: " + escapeMarkdown(formatDate(time)) + "\n";
     out +=
       "- Coordinates: [" +
       pos.latitude +
@@ -107,9 +107,9 @@ export async function handleTrack(chatId, text, locale) {
       encodeURIComponent(pos.latitude + "," + pos.longitude) +
       ")\n";
     if (typeof speed !== "undefined" && speed !== null)
-      out += "- Speed: " + String(speed) + " km/h\n";
-    out += "- State: " + moving + "\n";
-    if (attrs.battery) out += "- Battery: " + String(attrs.battery) + "\n";
+      out += "- Speed: " + escapeMarkdown(String(speed)) + " km/h\n";
+    out += "- State: " + escapeMarkdown(moving) + "\n";
+    if (attrs.battery) out += "- Battery: " + escapeMarkdown(String(attrs.battery)) + "\n";
   } else {
     out += "\nNo position available.\n";
   }
@@ -119,7 +119,7 @@ export async function handleTrack(chatId, text, locale) {
     Object.keys(device.attributes).forEach((key) => {
       if (SENSITIVE_ATTRS.has(key)) return;
       const val = device.attributes[key];
-      out += "- " + key + " : " + String(val) + "\n";
+      out += "- " + escapeMarkdown(key) + " : " + escapeMarkdown(String(val)) + "\n";
     });
   }
 
