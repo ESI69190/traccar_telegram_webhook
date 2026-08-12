@@ -80,3 +80,24 @@ export function redactPhone(phone) {
   if (s.length <= 4) return "****";
   return "****" + s.slice(-4);
 }
+
+/**
+ * Escape characters that have special meaning in Telegram's legacy Markdown mode.
+ * Only dynamic/user-controlled values should be passed through this helper;
+ * intentional Markdown formatting in static templates must remain unescaped.
+ *
+ * Legacy Markdown special characters: _ * [ ] ( ) ` \n (and unclosed entities)
+ * We escape _ * [ ] ( ) ` to prevent broken entities.
+ */
+export function escapeMarkdown(text) {
+  if (text === undefined || text === null) return "";
+  return String(text)
+    .replace(/\\/g, "\\\\")
+    .replace(/_/g, "\\_")
+    .replace(/\*/g, "\\*")
+    .replace(/\[/g, "\\[")
+    .replace(/\]/g, "\\]")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/`/g, "\\`");
+}

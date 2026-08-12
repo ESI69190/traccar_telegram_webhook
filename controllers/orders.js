@@ -2,7 +2,7 @@
 import { t } from "../services/i18n.js";
 import { findUserByChatId, traccarRequest, getOrderById } from "../services/traccar.js";
 import { telegramSendMessage } from "../services/telegram.js";
-import { isPositiveIntegerId } from "../services/security.js";
+import { isPositiveIntegerId, escapeMarkdown } from "../services/security.js";
 
 export default async function handleOrders(chatId, text, locale) {
   const parts = text.split(/\s+/);
@@ -33,7 +33,7 @@ export default async function handleOrders(chatId, text, locale) {
       const orders = resp.data || [];
       let out = "*Orders*:\n";
       orders.forEach((order, idx) => {
-        out += `\n#${idx + 1}:\n- ID: ${order.id}\n- Name: ${order.name}\n- Description: ${order.description}\n- Start: ${order.start}\n- End: ${order.end}\n`;
+        out += `\n#${idx + 1}:\n- ID: ${order.id}\n- Name: ${escapeMarkdown(order.name)}\n- Description: ${escapeMarkdown(order.description)}\n- Start: ${escapeMarkdown(order.start)}\n- End: ${escapeMarkdown(order.end)}\n`;
       });
       await telegramSendMessage(chatId, out, { parse_mode: "Markdown" });
     } else {

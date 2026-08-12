@@ -2,6 +2,7 @@
 import { t } from "../services/i18n.js";
 import { findUserByChatId, traccarRequest } from "../services/traccar.js";
 import { telegramSendMessage } from "../services/telegram.js";
+import { escapeMarkdown } from "../services/security.js";
 
 export async function handleReports(chatId, text, locale) {
   const parts = text.split(/\s+/);
@@ -20,5 +21,5 @@ export async function handleReports(chatId, text, locale) {
 
   // Simplified implementation for demonstration
   // In a real scenario, we would parse parameters like deviceId, from, to, etc.
-  await telegramSendMessage(chatId, `Report type '${reportType}' requested. Implementation pending detailed parameter parsing.`);
+  await telegramSendMessage(chatId, `Report type '${escapeMarkdown(reportType)}' requested. Implementation pending detailed parameter parsing.`);
 }

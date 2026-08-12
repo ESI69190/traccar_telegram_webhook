@@ -107,6 +107,54 @@ test("handleTrack allows authorized device", async () => {
   );
 });
 
+test("handleTrack escapes Markdown in device name and attributes", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  traccar.get("/api/devices").reply(200, [
+    {
+      id: 1,
+      name: "Vehicle_01",
+      uniqueId: "UID1",
+      attributes: {
+        telegramOwner: "123",
+        plate: "AB-123-CD",
+        note: "has _special_ *chars*",
+      },
+    },
+  ]).persist();
+  traccar
+    .get("/api/positions?deviceId=1&limit=1")
+    .reply(200, [
+      {
+        latitude: 48.8,
+        longitude: 2.3,
+        speed: 50,
+        serverTime: "2024-01-01T00:00:00Z",
+        attributes: { ignition: true, battery: 85 },
+      },
+    ]);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleTrack("123", "/track Vehicle_01", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected all Traccar mocks to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  assert.ok(capturedText.includes("Vehicle\\_01"), "Device name should be escaped");
+  assert.ok(capturedText.includes("has \\_special\\_ \\*chars\\*"), "Attribute value should be escaped");
+  assert.ok(capturedText.includes("*Device*"), "Intentional Markdown bold should remain");
+  assert.ok(capturedText.includes("[48.8,2.3](https://www.google.com"), "Markdown link should remain valid");
+});
+
 test("handleHistory caps limit at MAX_LIMIT", async () => {
   cleanAll();
   const traccar = setupTraccarNock();
