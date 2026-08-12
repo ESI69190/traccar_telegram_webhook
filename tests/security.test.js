@@ -6,6 +6,7 @@ import {
   redactPhone,
   MAX_LIMIT,
   isValidEmail,
+  escapeMarkdown,
 } from "../services/security.js";
 
 test("normalizePhone strips surrounding quotes", () => {
@@ -50,4 +51,28 @@ test("isValidEmail rejects invalid emails", () => {
   assert.strictEqual(isValidEmail(""), false);
   assert.strictEqual(isValidEmail("user@"), false);
   assert.strictEqual(isValidEmail(null), false);
+});
+
+test("escapeMarkdown escapes legacy Markdown special characters", () => {
+  assert.strictEqual(escapeMarkdown("_"), "\\_");
+  assert.strictEqual(escapeMarkdown("*"), "\\*");
+  assert.strictEqual(escapeMarkdown("["), "\\[");
+  assert.strictEqual(escapeMarkdown("]"), "\\]");
+  assert.strictEqual(escapeMarkdown("("), "\\(");
+  assert.strictEqual(escapeMarkdown(")"), "\\)");
+  assert.strictEqual(escapeMarkdown("`"), "\\`");
+  assert.strictEqual(escapeMarkdown("\\"), "\\\\");
+});
+
+test("escapeMarkdown preserves normal and Unicode text", () => {
+  assert.strictEqual(escapeMarkdown("car1"), "car1");
+  assert.strictEqual(escapeMarkdown("Véhicule_1"), "Véhicule\\_1");
+  assert.strictEqual(escapeMarkdown("Camion [rouge]"), "Camion \\[rouge\\]");
+  assert.strictEqual(escapeMarkdown("50.5"), "50.5");
+  assert.strictEqual(escapeMarkdown("2024-01-01 12:00:00"), "2024-01-01 12:00:00");
+});
+
+test("escapeMarkdown handles null and undefined", () => {
+  assert.strictEqual(escapeMarkdown(null), "");
+  assert.strictEqual(escapeMarkdown(undefined), "");
 });

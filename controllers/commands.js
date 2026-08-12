@@ -7,6 +7,7 @@ import {
 } from "../services/traccar.js";
 import { getDevicesForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
+import { escapeMarkdown } from "../services/security.js";
 
 export async function handleCommands(chatId, text, locale) {
   const parts = text.split(/\s+/);
@@ -32,7 +33,7 @@ export async function handleCommands(chatId, text, locale) {
   );
 
   if (!device) {
-    await telegramSendMessage(chatId, t(locale, "track_device_not_found") + deviceId);
+    await telegramSendMessage(chatId, t(locale, "track_device_not_found") + escapeMarkdown(deviceId));
     return;
   }
 

@@ -6,7 +6,7 @@ import {
 } from "../services/traccar.js";
 import { getDevicesForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
-import { formatDate, MAX_LIMIT } from "../services/security.js";
+import { formatDate, MAX_LIMIT, escapeMarkdown } from "../services/security.js";
 
 export async function handleHistory(chatId, text, locale) {
   const parts = text.split(/\s+/);
@@ -34,7 +34,7 @@ export async function handleHistory(chatId, text, locale) {
   if (!device) {
     await telegramSendMessage(
       chatId,
-      t(locale, "track_device_not_found") + identifier
+      t(locale, "track_device_not_found") + escapeMarkdown(identifier)
     );
     return;
   }
@@ -47,12 +47,12 @@ export async function handleHistory(chatId, text, locale) {
     return;
   }
 
-  let out = "*History for* " + (device.name || device.uniqueId) + ":\n";
+  let out = "*History for* " + escapeMarkdown(device.name || device.uniqueId) + ":\n";
   positions.forEach((p, idx) => {
     const time =
       p.serverTime || p.fixTime || p.time || p.deviceTime || null;
     out += "\n#" + (idx + 1) + ":\n";
-    if (time) out += "- Date: " + formatDate(time) + "\n";
+    if (time) out += "- Date: " + escapeMarkdown(formatDate(time)) + "\n";
     out +=
       "- Coordinates: [" +
       p.latitude +
