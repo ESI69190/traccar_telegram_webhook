@@ -9,6 +9,14 @@ import { getDevicesForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
 import { formatDate } from "../services/security.js";
 
+const SENSITIVE_ATTRS = new Set([
+  "telegramOwner",
+  "telegramChatId",
+  "password",
+  "token",
+  "secret"
+]);
+
 export async function handleTrack(chatId, text, locale) {
   const parts = text.split(/\s+/);
   const identifier = parts[1];
@@ -39,8 +47,24 @@ export async function handleTrack(chatId, text, locale) {
     return;
   }
 
+  const user = await findUserByChatId(chatId);
+  if (!user) {
+    await telegramSendMessage(chatId, t(locale, "start_assoc_prompt"));
+    return;
+  }
+
+  const allowedDevices = await getDevicesForUser(chatId);
   const device = await traccarFindDeviceByIdentifier(identifier);
   if (!device) {
+    await telegramSendMessage(
+      chatId,
+      t(locale, "track_device_not_found") + identifier
+    );
+    return;
+  }
+
+  const isAuthorized = allowedDevices.some((d) => d.id === device.id);
+  if (!isAuthorized) {
     await telegramSendMessage(
       chatId,
       t(locale, "track_device_not_found") + identifier
@@ -93,6 +117,7 @@ export async function handleTrack(chatId, text, locale) {
   if (device.attributes && Object.keys(device.attributes).length) {
     out += "\n*Device attributes*:\n";
     Object.keys(device.attributes).forEach((key) => {
+      if (SENSITIVE_ATTRS.has(key)) return;
       const val = device.attributes[key];
       out += "- " + key + " : " + String(val) + "\n";
     });

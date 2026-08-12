@@ -3,7 +3,8 @@ import { t } from "../services/i18n.js";
 import {
   normalizePhone,
   isValidEmail,
-  decryptAssocPassword
+  decryptAssocPassword,
+  redactPhone
 } from "../services/security.js";
 import {
   findUserByPhone,
@@ -14,20 +15,32 @@ import { telegramSendMessage } from "../services/telegram.js";
 import axios from "axios";
 
 const TRACCAR_URL = process.env.TRACCAR_URL || "http://traccar:8082";
-const ASSOC_SECRET = process.env.ASSOC_SECRET || null;
+function getAssocSecret() {
+  return process.env.ASSOC_SECRET || null;
+}
 
 const pendingChats = new Map();
 const PENDING_TTL = 10 * 60 * 1000;
+
+function requireSecureAssoc() {
+  if (process.env.NODE_ENV === "production" && !getAssocSecret()) {
+    return true;
+  }
+  return false;
+}
 
 setInterval(() => {
   const now = Date.now();
   for (const [chatId, meta] of pendingChats.entries()) {
     if (now - meta.createdAt > PENDING_TTL) {
+      if (meta.assocPasswordPlain) {
+        meta.assocPasswordPlain = null;
+      }
       pendingChats.delete(chatId);
       console.log("Purge pending chat " + chatId + " (expired)");
     }
   }
-}, 60 * 1000);
+}, 60 * 1000).unref();
 
 export async function handleAssoc(chatId, msg, locale) {
   const text = (msg.text || "").trim();
@@ -82,7 +95,7 @@ export async function handleAssoc(chatId, msg, locale) {
       return true;
     }
 
-    if (ASSOC_SECRET) {
+    if (getAssocSecret()) {
       if (!arg2) {
         pendingChats.set(chatId, {
           createdAt: Date.now(),
@@ -144,6 +157,10 @@ export async function handleAssoc(chatId, msg, locale) {
         return true;
       }
     } else {
+      if (requireSecureAssoc()) {
+        await telegramSendMessage(chatId, t(locale, "assoc_confirm_failed"));
+        return true;
+      }
       const user = await findUserByPhone(phoneCandidate);
       if (user) {
         const upd = await updateUserPhoneAndChat(
@@ -176,7 +193,29 @@ export async function handleAssoc(chatId, msg, locale) {
   if (msg.contact) {
     const phoneRaw = String(msg.contact.phone_number || "");
     const phone = normalizePhone(phoneRaw);
-    console.log("Contact shared phone:", phone, "chatId:", chatId);
+    console.log("Contact shared phone:", redactPhone(phone), "chatId:", chatId);
+
+    if (getAssocSecret()) {
+      pendingChats.set(chatId, {
+        createdAt: Date.now(),
+        awaitingEmail: false,
+        phoneCandidate: phone,
+        awaitingAssocConfirm: true
+      });
+      await telegramSendMessage(
+        chatId,
+        t(locale, "assoc_encrypted_required")
+      );
+      return true;
+    }
+
+    if (requireSecureAssoc()) {
+      await telegramSendMessage(chatId, t(locale, "assoc_confirm_failed"));
+      await telegramSendMessage(chatId, "Keyboard removed.", {
+        reply_markup: { remove_keyboard: true }
+      });
+      return true;
+    }
 
     const userByPhone = await findUserByPhone(phone);
     if (userByPhone) {
@@ -211,6 +250,59 @@ export async function handleAssoc(chatId, msg, locale) {
 
   if (msg.text) {
     const pending = pendingChats.get(chatId);
+    if (pending && pending.awaitingAssocConfirm && !pending.awaitingEmail) {
+      const encryptedBase64 = String(msg.text || "").trim();
+      const decrypted = decryptAssocPassword(encryptedBase64);
+      if (!decrypted) {
+        await telegramSendMessage(chatId, t(locale, "assoc_confirm_failed"));
+        pendingChats.delete(chatId);
+        return true;
+      }
+
+      const userByPhone = pending.phoneCandidate
+        ? await findUserByPhone(pending.phoneCandidate)
+        : null;
+      if (userByPhone && userByPhone.login) {
+        try {
+          const test = await axios.get(TRACCAR_URL + "/api/session", {
+            auth: { username: userByPhone.login, password: decrypted },
+            validateStatus: () => true
+          });
+          if (test.status === 200) {
+            const upd = await updateUserPhoneAndChat(
+              userByPhone.id,
+              pending.phoneCandidate,
+              chatId
+            );
+            if (upd.ok) {
+              await telegramSendMessage(
+                chatId,
+                t(locale, "assoc_confirm_success") +
+                  (upd.user.name || userByPhone.email || userByPhone.id)
+              );
+            } else {
+              await telegramSendMessage(chatId, t(locale, "generic_error"));
+            }
+          } else {
+            await telegramSendMessage(
+              chatId,
+              t(locale, "assoc_confirm_failed")
+            );
+          }
+        } catch (e) {
+          console.error("Auth test error:", e?.toString());
+          await telegramSendMessage(chatId, t(locale, "assoc_confirm_failed"));
+        }
+        pendingChats.delete(chatId);
+        return true;
+      }
+
+      pending.awaitingEmail = true;
+      pending.assocPasswordPlain = decrypted;
+      await telegramSendMessage(chatId, t(locale, "assoc_no_user_ask_email"));
+      return true;
+    }
+
     if (pending && pending.awaitingEmail) {
       const candidateEmail = String(msg.text || "").trim();
       const cancelWord = (t(locale, "cancel") || "cancel").toLowerCase();
@@ -219,6 +311,7 @@ export async function handleAssoc(chatId, msg, locale) {
           candidateEmail.toLowerCase() === cancelWord ||
           candidateEmail.toLowerCase() === "annuler"
         ) {
+          if (pending.assocPasswordPlain) pending.assocPasswordPlain = null;
           pendingChats.delete(chatId);
           await telegramSendMessage(chatId, t(locale, "cancelled"));
           return true;
@@ -248,12 +341,14 @@ export async function handleAssoc(chatId, msg, locale) {
                 chatId,
                 t(locale, "assoc_confirm_failed")
               );
+              if (pending.assocPasswordPlain) pending.assocPasswordPlain = null;
               pendingChats.delete(chatId);
               return true;
             }
           } catch (e) {
             console.error("Auth test error:", e?.toString());
             await telegramSendMessage(chatId, t(locale, "assoc_confirm_failed"));
+            if (pending.assocPasswordPlain) pending.assocPasswordPlain = null;
             pendingChats.delete(chatId);
             return true;
           }
@@ -270,6 +365,7 @@ export async function handleAssoc(chatId, msg, locale) {
           chatId,
           "No phone candidate in pending state. Send /assoc <phone> or share contact."
         );
+        if (pending.assocPasswordPlain) pending.assocPasswordPlain = null;
         pendingChats.delete(chatId);
         return true;
       }
@@ -279,6 +375,7 @@ export async function handleAssoc(chatId, msg, locale) {
         phoneToSet,
         chatId
       );
+      if (pending.assocPasswordPlain) pending.assocPasswordPlain = null;
       if (upd2.ok) {
         await telegramSendMessage(
           chatId,
