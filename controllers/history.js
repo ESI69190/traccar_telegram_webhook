@@ -6,7 +6,7 @@ import {
 } from "../services/traccar.js";
 import { getDevicesForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
-import { formatDate } from "../services/security.js";
+import { formatDate, MAX_LIMIT } from "../services/security.js";
 
 export async function handleHistory(chatId, text, locale) {
   const parts = text.split(/\s+/);
@@ -39,7 +39,7 @@ export async function handleHistory(chatId, text, locale) {
     return;
   }
 
-  const limit = isNaN(n) || n <= 0 ? 5 : n;
+  const limit = Math.min(Math.max(isNaN(n) || n <= 0 ? 5 : n, 1), MAX_LIMIT);
   const positions = await getLastPositions(device.id, limit);
 
   if (!positions.length) {

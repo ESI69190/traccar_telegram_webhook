@@ -14,9 +14,25 @@ import { handleReports } from "../controllers/reports.js";
 
 export async function handleTelegramUpdate(req, res) {
   try {
+    const botSecret = process.env.BOT_SECRET || null;
+    if (botSecret) {
+      const secretHeader = req.headers["x-telegram-bot-api-secret-token"];
+      if (secretHeader !== botSecret) {
+        console.warn("Invalid or missing Telegram secret token. Request rejected.");
+        return res.sendStatus(401);
+      }
+    } else if (process.env.NODE_ENV === "production") {
+      console.warn("BOT_SECRET not set in production. Telegram webhook request rejected.");
+      return res.sendStatus(401);
+    }
+
     const update = req.body;
     const msg = update && update.message;
     if (!msg) return res.sendStatus(200);
+
+    if (msg.chat && msg.chat.type !== "private") {
+      return res.sendStatus(200);
+    }
 
     const chatId = String(
       (msg.chat && msg.chat.id) || (msg.from && msg.from.id) || ""
@@ -87,7 +103,7 @@ export async function handleTelegramUpdate(req, res) {
 
     return res.sendStatus(200);
   } catch (e) {
-    console.error("handleTelegramUpdate error:", e);
+    console.error("handleTelegramUpdate error:", String(e?.message || e));
     return res.sendStatus(200);
   }
 }

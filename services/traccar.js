@@ -1,12 +1,15 @@
 // services/traccar.js
 import axios from "axios";
 
-const TRACCAR_URL = process.env.TRACCAR_URL || "http://traccar:8082";
 const TRACCAR_USER = process.env.TRACCAR_USER;
 const TRACCAR_PASS = process.env.TRACCAR_PASS;
 
-export async function traccarRequest(method, endpoint, data) {
-  const url = TRACCAR_URL + endpoint;
+function getTraccarUrl() {
+  return process.env.TRACCAR_URL || "http://traccar:8082";
+}
+
+export async function traccarRequest(method, endpoint, data, queryParams) {
+  const url = getTraccarUrl() + endpoint;
   console.log("-> Traccar request", { method, url, authUser: TRACCAR_USER });
   try {
     const resp = await axios({
@@ -14,6 +17,7 @@ export async function traccarRequest(method, endpoint, data) {
       url,
       auth: { username: TRACCAR_USER, password: TRACCAR_PASS },
       data,
+      params: queryParams,
       validateStatus: () => true,
       headers: { "Content-Type": "application/json" }
     });
@@ -23,10 +27,10 @@ export async function traccarRequest(method, endpoint, data) {
     });
     return resp;
   } catch (err) {
-    console.error("Traccar request error:", err?.toString());
-    if (err && err.response) {
-      console.error("Response data:", err.response.data);
-      console.error("Response status:", err.response.status);
+    const status = err && err.response && err.response.status;
+    console.error("Traccar request error:", String(err?.message || err));
+    if (status) {
+      console.error("Response status:", status);
     }
     throw err;
   }
@@ -137,4 +141,10 @@ export async function getLastPositions(deviceId, limit = 1) {
   );
   if (resp.status !== 200) return [];
   return resp.data || [];
+}
+
+export async function getOrderById(orderId) {
+  const resp = await traccarRequest("get", "/api/orders/" + orderId);
+  if (resp.status >= 200 && resp.status < 300) return resp.data || null;
+  return null;
 }
