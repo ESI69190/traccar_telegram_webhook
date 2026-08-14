@@ -53,7 +53,7 @@ export async function handleTelegramUpdate(req, res) {
       if (!associatedUser) {
         startMsg += t(locale, "start_assoc_prompt");
       }
-      await telegramSendMessage(chatId, startMsg, { parse_mode: "Markdown" });
+      await telegramSendMessage(chatId, startMsg);
       return res.sendStatus(200);
     }
 

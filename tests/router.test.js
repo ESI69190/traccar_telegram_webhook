@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { setupTraccarNock, setupTelegramNock, cleanAll } from "./helpers/nock-helper.js";
 
 // Modules must be imported AFTER setup.js has set env vars.
-// node --import ./tests/setup.js ensures BOT_TOKEN and TRACCAR_URL are set first.
+// node --import ./tests/setup.js ensures BOT_TOKEN and TRACCAR_API_URL are set first.
 import { handleTelegramUpdate } from "../router/telegram.js";
 
 function mockUser(scope, chatId, userId) {
@@ -14,8 +14,8 @@ function mockUser(scope, chatId, userId) {
         id: userId,
         attributes: { telegramChatId: String(chatId) },
         login: "user1",
-        email: "user1@example.com",
-      },
+        email: "user1@example.com"
+      }
     ]);
 }
 
@@ -27,15 +27,15 @@ test("webhook rejects request without secret token when BOT_SECRET is set", asyn
   const res = {
     sendStatus: (code) => {
       statusCode = code;
-    },
+    }
   };
 
   await handleTelegramUpdate(
     {
       headers: {},
       body: {
-        message: { chat: { id: 123, type: "private" }, text: "/start" },
-      },
+        message: { chat: { id: 123, type: "private" }, text: "/start" }
+      }
     },
     res
   );
@@ -57,15 +57,15 @@ test("webhook accepts request with correct secret token", async () => {
   const res = {
     sendStatus: (code) => {
       statusCode = code;
-    },
+    }
   };
 
   await handleTelegramUpdate(
     {
       headers: { "x-telegram-bot-api-secret-token": "test-secret" },
       body: {
-        message: { chat: { id: 123, type: "private" }, text: "/start" },
-      },
+        message: { chat: { id: 123, type: "private" }, text: "/start" }
+      }
     },
     res
   );
@@ -85,15 +85,15 @@ test("webhook ignores group chats even with valid secret", async () => {
   const res = {
     sendStatus: (code) => {
       statusCode = code;
-    },
+    }
   };
 
   await handleTelegramUpdate(
     {
       headers: { "x-telegram-bot-api-secret-token": "test-secret" },
       body: {
-        message: { chat: { id: -123, type: "group" }, text: "/start" },
-      },
+        message: { chat: { id: -123, type: "group" }, text: "/start" }
+      }
     },
     res
   );
@@ -115,15 +115,15 @@ test("webhook allows request when BOT_SECRET is not set", async () => {
   const res = {
     sendStatus: (code) => {
       statusCode = code;
-    },
+    }
   };
 
   await handleTelegramUpdate(
     {
       headers: {},
       body: {
-        message: { chat: { id: 123, type: "private" }, text: "/start" },
-      },
+        message: { chat: { id: 123, type: "private" }, text: "/start" }
+      }
     },
     res
   );
@@ -143,15 +143,15 @@ test("webhook rejects request with wrong secret token", async () => {
   const res = {
     sendStatus: (code) => {
       statusCode = code;
-    },
+    }
   };
 
   await handleTelegramUpdate(
     {
       headers: { "x-telegram-bot-api-secret-token": "wrong-secret" },
       body: {
-        message: { chat: { id: 123, type: "private" }, text: "/start" },
-      },
+        message: { chat: { id: 123, type: "private" }, text: "/start" }
+      }
     },
     res
   );
@@ -169,15 +169,15 @@ test("webhook rejects request without secret token in production", async () => {
   const res = {
     sendStatus: (code) => {
       statusCode = code;
-    },
+    }
   };
 
   await handleTelegramUpdate(
     {
       headers: {},
       body: {
-        message: { chat: { id: 123, type: "private" }, text: "/start" },
-      },
+        message: { chat: { id: 123, type: "private" }, text: "/start" }
+      }
     },
     res
   );
@@ -195,15 +195,15 @@ test("webhook rejects non-private chats", async () => {
   const res = {
     sendStatus: (code) => {
       statusCode = code;
-    },
+    }
   };
 
   await handleTelegramUpdate(
     {
       headers: {},
       body: {
-        message: { chat: { id: -123, type: "channel" }, text: "/start" },
-      },
+        message: { chat: { id: -123, type: "channel" }, text: "/start" }
+      }
     },
     res
   );

@@ -1,10 +1,19 @@
 // services/env.js
 export function checkEnv() {
   const missing = [];
-  if (!process.env.TRACCAR_URL)
-    console.warn("TRACCAR_URL not set, using default http://traccar:8082");
-  if (!process.env.TRACCAR_USER) missing.push("TRACCAR_USER");
-  if (!process.env.TRACCAR_PASS) missing.push("TRACCAR_PASS");
+
+  if (!process.env.TRACCAR_API_URL) {
+    console.warn("TRACCAR_API_URL not set, using default http://traccar:8082");
+  }
+
+  const hasBasicAuth =
+    process.env.TRACCAR_USERNAME && process.env.TRACCAR_PASSWORD;
+  const hasApiKey = !!process.env.TRACCAR_API_KEY;
+
+  if (!hasBasicAuth && !hasApiKey) {
+    missing.push("TRACCAR_USERNAME + TRACCAR_PASSWORD or TRACCAR_API_KEY");
+  }
+
   if (!process.env.BOT_TOKEN) missing.push("BOT_TOKEN");
 
   if (missing.length) {

@@ -1,6 +1,6 @@
 import nock from "nock";
 
-const TRACCAR_BASE = "http://traccar:8082";
+const TRACCAR_BASE = "https://tricard.eyeshield-informatique.tech";
 const TELEGRAM_BASE = "https://api.telegram.org";
 
 export function setupTraccarNock() {

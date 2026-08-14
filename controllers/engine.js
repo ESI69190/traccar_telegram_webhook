@@ -1,11 +1,7 @@
 // controllers/engine.js
 import { t } from "../services/i18n.js";
-import {
-  findUserByChatId,
-  traccarFindDeviceByIdentifier,
-  traccarRequest
-} from "../services/traccar.js";
-import { getDevicesForUser } from "../services/permissions.js";
+import { findUserByChatId, traccarRequest } from "../services/traccar.js";
+import { findDeviceForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
 import { escapeMarkdown } from "../services/security.js";
 
@@ -15,7 +11,7 @@ export async function handleEngine(chatId, text, locale) {
   const action = (parts[2] || "").toLowerCase();
 
   if (!identifier || !action) {
-    await telegramSendMessage(chatId, t(locale, "engine_usage"));
+    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "engine_usage")));
     return;
   }
 
@@ -25,17 +21,11 @@ export async function handleEngine(chatId, text, locale) {
     return;
   }
 
-  const devices = await getDevicesForUser(chatId);
-  const device = devices.find(
-    (d) =>
-      d.name?.toLowerCase() === identifier.toLowerCase() ||
-      d.uniqueId?.toLowerCase() === identifier.toLowerCase()
-  );
-
+  const device = await findDeviceForUser(chatId, user.id, identifier);
   if (!device) {
     await telegramSendMessage(
       chatId,
-      t(locale, "track_device_not_found") + escapeMarkdown(identifier)
+      escapeMarkdown(t(locale, "track_device_not_found")) + escapeMarkdown(identifier)
     );
     return;
   }
@@ -50,8 +40,8 @@ export async function handleEngine(chatId, text, locale) {
 
   const resp = await traccarRequest("post", "/api/commands/send", cmd);
   if (resp.status >= 200 && resp.status < 300) {
-    await telegramSendMessage(chatId, t(locale, "engine_command_sent"));
+    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "engine_command_sent")));
   } else {
-    await telegramSendMessage(chatId, t(locale, "engine_command_failed"));
+    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "engine_command_failed")));
   }
 }

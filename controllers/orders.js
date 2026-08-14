@@ -9,7 +9,7 @@ export default async function handleOrders(chatId, text, locale) {
   const action = parts[1] || "";
 
   if (!action) {
-    await telegramSendMessage(chatId, t(locale, "orders_usage"));
+    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "orders_usage")));
     return;
   }
 
@@ -33,23 +33,34 @@ export default async function handleOrders(chatId, text, locale) {
       const orders = resp.data || [];
       let out = "*Orders*:\n";
       orders.forEach((order, idx) => {
-        out += `\n#${idx + 1}:\n- ID: ${order.id}\n- Name: ${escapeMarkdown(order.name)}\n- Description: ${escapeMarkdown(order.description)}\n- Start: ${escapeMarkdown(order.start)}\n- End: ${escapeMarkdown(order.end)}\n`;
+        out += `\n#${idx + 1}:\n`;
+        out += `- ID: ${order.id}\n`;
+        out += `- Unique ID: ${escapeMarkdown(order.uniqueId)}\n`;
+        out += `- Description: ${escapeMarkdown(order.description)}\n`;
+        out += `- From: ${escapeMarkdown(order.fromAddress)}\n`;
+        out += `- To: ${escapeMarkdown(order.toAddress)}\n`;
       });
-      await telegramSendMessage(chatId, out, { parse_mode: "Markdown" });
+      await telegramSendMessage(chatId, out);
     } else {
-      await telegramSendMessage(chatId, t(locale, "generic_error"));
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
     }
     return;
   }
 
   // POST /orders
   if (action === "create") {
-    const orderData = { name: parts[2], description: parts[3], start: parts[4], end: parts[5], userId: user.id };
+    const orderData = {
+      uniqueId: parts[2],
+      description: parts[3],
+      fromAddress: parts[4],
+      toAddress: parts[5],
+      attributes: {}
+    };
     const resp = await traccarRequest("post", "/api/orders", orderData);
     if (resp.status >= 200 && resp.status < 300) {
-      await telegramSendMessage(chatId, t(locale, "order_created"));
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_created")));
     } else {
-      await telegramSendMessage(chatId, t(locale, "order_failed"));
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_failed")));
     }
     return;
   }
@@ -58,20 +69,27 @@ export default async function handleOrders(chatId, text, locale) {
   if (action === "update") {
     const id = parts[2];
     if (!isPositiveIntegerId(id)) {
-      await telegramSendMessage(chatId, t(locale, "generic_error"));
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
       return;
     }
     const order = await getOrderById(id);
-    if (!order || String(order.userId) !== String(user.id)) {
-      await telegramSendMessage(chatId, t(locale, "order_failed"));
+    if (!order) {
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_failed")));
       return;
     }
-    const orderData = { name: parts[3], description: parts[4], start: parts[5], end: parts[6], userId: user.id };
+    const orderData = {
+      id: Number(id),
+      uniqueId: parts[3],
+      description: parts[4],
+      fromAddress: parts[5],
+      toAddress: parts[6],
+      attributes: order.attributes || {}
+    };
     const resp = await traccarRequest("put", `/api/orders/${id}`, orderData);
     if (resp.status >= 200 && resp.status < 300) {
-      await telegramSendMessage(chatId, t(locale, "order_updated"));
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_updated")));
     } else {
-      await telegramSendMessage(chatId, t(locale, "order_failed"));
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_failed")));
     }
     return;
   }
@@ -80,20 +98,22 @@ export default async function handleOrders(chatId, text, locale) {
   if (action === "delete") {
     const id = parts[2];
     if (!isPositiveIntegerId(id)) {
-      await telegramSendMessage(chatId, t(locale, "generic_error"));
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
       return;
     }
     const order = await getOrderById(id);
-    if (!order || String(order.userId) !== String(user.id)) {
-      await telegramSendMessage(chatId, t(locale, "order_failed"));
+    if (!order) {
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_failed")));
       return;
     }
     const resp = await traccarRequest("delete", `/api/orders/${id}`);
     if (resp.status >= 200 && resp.status < 300) {
-      await telegramSendMessage(chatId, t(locale, "order_deleted"));
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_deleted")));
     } else {
-      await telegramSendMessage(chatId, t(locale, "order_failed"));
+      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_failed")));
     }
     return;
   }
+
+  await telegramSendMessage(chatId, escapeMarkdown(t(locale, "orders_usage")));
 }
