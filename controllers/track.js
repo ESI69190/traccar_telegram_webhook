@@ -1,13 +1,9 @@
 // controllers/track.js
 import { t } from "../services/i18n.js";
-import {
-  findUserByChatId,
-  traccarFindDeviceByIdentifier,
-  getLastPositions
-} from "../services/traccar.js";
-import { getDevicesForUser } from "../services/permissions.js";
+import { findUserByChatId, getLastPositions } from "../services/traccar.js";
+import { getDevicesForUser, findDeviceForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
-import { formatDate, escapeMarkdown } from "../services/security.js";
+import { formatDate, escapeMarkdown, markdownLink } from "../services/security.js";
 
 const SENSITIVE_ATTRS = new Set([
   "telegramOwner",
@@ -17,35 +13,15 @@ const SENSITIVE_ATTRS = new Set([
   "secret"
 ]);
 
+function computeTimeRange(limit) {
+  const to = new Date();
+  const from = new Date(to.getTime() - limit * 24 * 60 * 60 * 1000);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
 export async function handleTrack(chatId, text, locale) {
   const parts = text.split(/\s+/);
   const identifier = parts[1];
-
-  if (!identifier) {
-    const user = await findUserByChatId(chatId);
-    if (!user) {
-      await telegramSendMessage(chatId, t(locale, "start_assoc_prompt"));
-      return;
-    }
-
-    const devices = await getDevicesForUser(chatId);
-    if (!devices.length) {
-      await telegramSendMessage(
-        chatId,
-        t(locale, "track_listing_devices") + "\n(none)"
-      );
-      return;
-    }
-
-    const lines = devices.map(
-      (d) => "- " + escapeMarkdown(d.name || d.uniqueId || "id:" + d.id) + " (id:" + d.id + ")"
-    );
-    await telegramSendMessage(
-      chatId,
-      t(locale, "track_listing_devices") + "\n" + lines.join("\n")
-    );
-    return;
-  }
 
   const user = await findUserByChatId(chatId);
   if (!user) {
@@ -53,31 +29,42 @@ export async function handleTrack(chatId, text, locale) {
     return;
   }
 
-  const allowedDevices = await getDevicesForUser(chatId);
-  const device = await traccarFindDeviceByIdentifier(identifier);
+  if (!identifier) {
+    const devices = await getDevicesForUser(chatId, user.id);
+    if (!devices.length) {
+      await telegramSendMessage(
+        chatId,
+        escapeMarkdown(t(locale, "track_listing_devices")) + "\n\\(none\\)"
+      );
+      return;
+    }
+
+    const lines = devices.map(
+      (d) => "- " + escapeMarkdown(d.name || d.uniqueId || "id:" + d.id) + " \\(id:" + d.id + "\\)"
+    );
+    await telegramSendMessage(
+      chatId,
+      escapeMarkdown(t(locale, "track_listing_devices")) + "\n" + lines.join("\n")
+    );
+    return;
+  }
+
+  const device = await findDeviceForUser(chatId, user.id, identifier);
   if (!device) {
     await telegramSendMessage(
       chatId,
-      t(locale, "track_device_not_found") + escapeMarkdown(identifier)
+      escapeMarkdown(t(locale, "track_device_not_found")) + escapeMarkdown(identifier)
     );
     return;
   }
 
-  const isAuthorized = allowedDevices.some((d) => d.id === device.id);
-  if (!isAuthorized) {
-    await telegramSendMessage(
-      chatId,
-      t(locale, "track_device_not_found") + escapeMarkdown(identifier)
-    );
-    return;
-  }
-
-  const positions = await getLastPositions(device.id, 1);
+  const { from, to } = computeTimeRange(1);
+  const positions = await getLastPositions(device.id, from, to);
   const pos = positions[0];
 
   let out =
     "*" +
-    t(locale, "track_device_info_title") +
+    escapeMarkdown(t(locale, "track_device_info_title")) +
     "* : " +
     escapeMarkdown(device.name || device.uniqueId) +
     "\n";
@@ -98,14 +85,11 @@ export async function handleTrack(chatId, text, locale) {
 
     out += "\n*Last position*:\n";
     if (time) out += "- Date: " + escapeMarkdown(formatDate(time)) + "\n";
-    out +=
-      "- Coordinates: [" +
-      pos.latitude +
-      "," +
-      pos.longitude +
-      "](https://www.google.com/maps/search/?api=1&query=" +
-      encodeURIComponent(pos.latitude + "," + pos.longitude) +
-      ")\n";
+    const linkLabel = pos.latitude + "," + pos.longitude;
+    const linkUrl =
+      "https://www.google.com/maps/search/?api=1&query=" +
+      encodeURIComponent(pos.latitude + "," + pos.longitude);
+    out += "- Coordinates: " + markdownLink(linkLabel, linkUrl) + "\n";
     if (typeof speed !== "undefined" && speed !== null)
       out += "- Speed: " + escapeMarkdown(String(speed)) + " km/h\n";
     out += "- State: " + escapeMarkdown(moving) + "\n";
@@ -123,5 +107,5 @@ export async function handleTrack(chatId, text, locale) {
     });
   }
 
-  await telegramSendMessage(chatId, out, { parse_mode: "Markdown" });
+  await telegramSendMessage(chatId, out);
 }

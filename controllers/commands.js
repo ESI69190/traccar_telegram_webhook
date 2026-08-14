@@ -1,11 +1,7 @@
 // controllers/commands.js
 import { t } from "../services/i18n.js";
-import { 
-  findUserByChatId, 
-  traccarFindDeviceByIdentifier, 
-  traccarRequest 
-} from "../services/traccar.js";
-import { getDevicesForUser } from "../services/permissions.js";
+import { findUserByChatId, traccarRequest } from "../services/traccar.js";
+import { findDeviceForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
 import { escapeMarkdown } from "../services/security.js";
 
@@ -16,7 +12,7 @@ export async function handleCommands(chatId, text, locale) {
   const commandType = parts[3] || "";
 
   if (!action || !deviceId || !commandType) {
-    await telegramSendMessage(chatId, t(locale, "commands_usage"));
+    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "commands_usage")));
     return;
   }
 
@@ -26,14 +22,12 @@ export async function handleCommands(chatId, text, locale) {
     return;
   }
 
-  const devices = await getDevicesForUser(chatId);
-  const device = devices.find(d => 
-    d.name?.toLowerCase() === deviceId.toLowerCase() || 
-    d.uniqueId?.toLowerCase() === deviceId.toLowerCase()
-  );
-
+  const device = await findDeviceForUser(chatId, user.id, deviceId);
   if (!device) {
-    await telegramSendMessage(chatId, t(locale, "track_device_not_found") + escapeMarkdown(deviceId));
+    await telegramSendMessage(
+      chatId,
+      escapeMarkdown(t(locale, "track_device_not_found")) + escapeMarkdown(deviceId)
+    );
     return;
   }
 
@@ -45,8 +39,8 @@ export async function handleCommands(chatId, text, locale) {
 
   const resp = await traccarRequest("post", "/api/commands/send", cmd);
   if (resp.status >= 200 && resp.status < 300) {
-    await telegramSendMessage(chatId, t(locale, "command_sent"));
+    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "command_sent")));
   } else {
-    await telegramSendMessage(chatId, t(locale, "command_failed"));
+    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "command_failed")));
   }
 }

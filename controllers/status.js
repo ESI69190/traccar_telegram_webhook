@@ -1,19 +1,22 @@
 // controllers/status.js
 import { t } from "../services/i18n.js";
-import {
-  findUserByChatId,
-  getLastPositions
-} from "../services/traccar.js";
-import { getDevicesForUser } from "../services/permissions.js";
+import { findUserByChatId, getLastPositions } from "../services/traccar.js";
+import { findDeviceForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
 import { formatDate, escapeMarkdown } from "../services/security.js";
+
+function computeTimeRange(days) {
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
 
 export async function handleStatus(chatId, text, locale) {
   const parts = text.split(/\s+/);
   const identifier = parts[1];
 
   if (!identifier) {
-    await telegramSendMessage(chatId, t(locale, "status_usage"));
+    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "status_usage")));
     return;
   }
 
@@ -23,22 +26,17 @@ export async function handleStatus(chatId, text, locale) {
     return;
   }
 
-  const devices = await getDevicesForUser(chatId);
-  const device = devices.find(
-    (d) =>
-      d.name?.toLowerCase() === identifier.toLowerCase() ||
-      d.uniqueId?.toLowerCase() === identifier.toLowerCase()
-  );
-
+  const device = await findDeviceForUser(chatId, user.id, identifier);
   if (!device) {
     await telegramSendMessage(
       chatId,
-      t(locale, "track_device_not_found") + escapeMarkdown(identifier)
+      escapeMarkdown(t(locale, "track_device_not_found")) + escapeMarkdown(identifier)
     );
     return;
   }
 
-  const positions = await getLastPositions(device.id, 1);
+  const { from, to } = computeTimeRange(1);
+  const positions = await getLastPositions(device.id, from, to);
   const pos = positions[0];
 
   let out = "*Status* " + escapeMarkdown(device.name || device.uniqueId) + ":\n";
@@ -61,8 +59,8 @@ export async function handleStatus(chatId, text, locale) {
       out += "- Speed: " + escapeMarkdown(String(speed)) + " km/h\n";
     if (attrs.battery) out += "- Battery: " + escapeMarkdown(String(attrs.battery)) + "\n";
   } else {
-    out += t(locale, "no_positions") + "\n";
+    out += escapeMarkdown(t(locale, "no_positions")) + "\n";
   }
 
-  await telegramSendMessage(chatId, out, { parse_mode: "Markdown" });
+  await telegramSendMessage(chatId, out);
 }
