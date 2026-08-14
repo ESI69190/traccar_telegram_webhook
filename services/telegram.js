@@ -1,5 +1,6 @@
 // services/telegram.js
 import axios from "axios";
+import { escapeMarkdown } from "./security.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const TELEGRAM_API = BOT_TOKEN
@@ -37,4 +38,16 @@ export async function telegramSendMessage(chatId, text, options) {
     console.error("Telegram sendMessage error:", err?.toString());
     return null;
   }
+}
+
+/**
+ * Send a plain-text message safely in MarkdownV2 parse mode.
+ * The entire text is escaped; use telegramSendMessage directly when you need
+ * intentional MarkdownV2 formatting.
+ */
+export async function sendPlainText(chatId, text, options) {
+  return telegramSendMessage(chatId, escapeMarkdown(text), {
+    ...options,
+    parse_mode: "MarkdownV2"
+  });
 }

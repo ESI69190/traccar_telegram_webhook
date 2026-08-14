@@ -2,7 +2,7 @@
 import { t } from "../services/i18n.js";
 import { findUserByChatId, traccarRequest } from "../services/traccar.js";
 import { findDeviceForUser } from "../services/permissions.js";
-import { telegramSendMessage } from "../services/telegram.js";
+import { telegramSendMessage, sendPlainText } from "../services/telegram.js";
 import { escapeMarkdown } from "../services/security.js";
 
 const VALID_REPORT_TYPES = new Set([
@@ -49,9 +49,9 @@ export async function handleReports(chatId, text, locale) {
   const parts = text.split(/\s+/);
 
   if (parts.length < 3) {
-    await telegramSendMessage(
+    await sendPlainText(
       chatId,
-      escapeMarkdown(t(locale, "reports_usage"))
+      t(locale, "reports_usage")
     );
     return;
   }
@@ -59,24 +59,24 @@ export async function handleReports(chatId, text, locale) {
   const { type, identifier, days } = parseReportArgs(parts);
 
   if (!VALID_REPORT_TYPES.has(type)) {
-    await telegramSendMessage(
+    await sendPlainText(
       chatId,
-      escapeMarkdown(t(locale, "reports_usage"))
+      t(locale, "reports_usage")
     );
     return;
   }
 
   const user = await findUserByChatId(chatId);
   if (!user) {
-    await telegramSendMessage(chatId, t(locale, "start_assoc_prompt"));
+    await sendPlainText(chatId, t(locale, "start_assoc_prompt"));
     return;
   }
 
   const device = await findDeviceForUser(chatId, user.id, identifier);
   if (!device) {
-    await telegramSendMessage(
+    await sendPlainText(
       chatId,
-      escapeMarkdown(t(locale, "track_device_not_found")) + escapeMarkdown(identifier)
+      t(locale, "track_device_not_found") + identifier
     );
     return;
   }
@@ -88,6 +88,6 @@ export async function handleReports(chatId, text, locale) {
   if (resp.status >= 200 && resp.status < 300) {
     await telegramSendMessage(chatId, formatReport(type, resp.data));
   } else {
-    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
+    await sendPlainText(chatId, t(locale, "generic_error"));
   }
 }

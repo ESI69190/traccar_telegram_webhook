@@ -2,7 +2,7 @@
 import { t } from "../services/i18n.js";
 import { findUserByChatId, getLastPositions } from "../services/traccar.js";
 import { findDeviceForUser } from "../services/permissions.js";
-import { telegramSendMessage } from "../services/telegram.js";
+import { telegramSendMessage, sendPlainText } from "../services/telegram.js";
 import { formatDate, MAX_LIMIT, escapeMarkdown, markdownLink } from "../services/security.js";
 
 function computeTimeRange(days) {
@@ -17,21 +17,21 @@ export async function handleHistory(chatId, text, locale) {
   const n = parts[2] ? parseInt(parts[2], 10) : 5;
 
   if (!identifier) {
-    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "history_usage")));
+    await sendPlainText(chatId, t(locale, "history_usage"));
     return;
   }
 
   const user = await findUserByChatId(chatId);
   if (!user) {
-    await telegramSendMessage(chatId, t(locale, "start_assoc_prompt"));
+    await sendPlainText(chatId, t(locale, "start_assoc_prompt"));
     return;
   }
 
   const device = await findDeviceForUser(chatId, user.id, identifier);
   if (!device) {
-    await telegramSendMessage(
+    await sendPlainText(
       chatId,
-      escapeMarkdown(t(locale, "track_device_not_found")) + escapeMarkdown(identifier)
+      t(locale, "track_device_not_found") + identifier
     );
     return;
   }
@@ -42,7 +42,7 @@ export async function handleHistory(chatId, text, locale) {
   const limitedPositions = positions.slice(0, limit);
 
   if (!limitedPositions.length) {
-    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "no_positions")));
+    await sendPlainText(chatId, t(locale, "no_positions"));
     return;
   }
 

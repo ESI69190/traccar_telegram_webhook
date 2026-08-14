@@ -1,7 +1,7 @@
 // controllers/orders.js
 import { t } from "../services/i18n.js";
 import { findUserByChatId, traccarRequest, getOrderById } from "../services/traccar.js";
-import { telegramSendMessage } from "../services/telegram.js";
+import { telegramSendMessage, sendPlainText } from "../services/telegram.js";
 import { isPositiveIntegerId, escapeMarkdown } from "../services/security.js";
 
 export default async function handleOrders(chatId, text, locale) {
@@ -9,13 +9,13 @@ export default async function handleOrders(chatId, text, locale) {
   const action = parts[1] || "";
 
   if (!action) {
-    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "orders_usage")));
+    await sendPlainText(chatId, t(locale, "orders_usage"));
     return;
   }
 
   const user = await findUserByChatId(chatId);
   if (!user) {
-    await telegramSendMessage(chatId, t(locale, "start_assoc_prompt"));
+    await sendPlainText(chatId, t(locale, "start_assoc_prompt"));
     return;
   }
 
@@ -42,7 +42,7 @@ export default async function handleOrders(chatId, text, locale) {
       });
       await telegramSendMessage(chatId, out);
     } else {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
+      await sendPlainText(chatId, t(locale, "generic_error"));
     }
     return;
   }
@@ -58,9 +58,9 @@ export default async function handleOrders(chatId, text, locale) {
     };
     const resp = await traccarRequest("post", "/api/orders", orderData);
     if (resp.status >= 200 && resp.status < 300) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_created")));
+      await sendPlainText(chatId, t(locale, "order_created"));
     } else {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_failed")));
+      await sendPlainText(chatId, t(locale, "order_failed"));
     }
     return;
   }
@@ -69,12 +69,12 @@ export default async function handleOrders(chatId, text, locale) {
   if (action === "update") {
     const id = parts[2];
     if (!isPositiveIntegerId(id)) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
+      await sendPlainText(chatId, t(locale, "generic_error"));
       return;
     }
     const order = await getOrderById(id);
     if (!order) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_failed")));
+      await sendPlainText(chatId, t(locale, "order_failed"));
       return;
     }
     const orderData = {
@@ -87,9 +87,9 @@ export default async function handleOrders(chatId, text, locale) {
     };
     const resp = await traccarRequest("put", `/api/orders/${id}`, orderData);
     if (resp.status >= 200 && resp.status < 300) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_updated")));
+      await sendPlainText(chatId, t(locale, "order_updated"));
     } else {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_failed")));
+      await sendPlainText(chatId, t(locale, "order_failed"));
     }
     return;
   }
@@ -98,22 +98,22 @@ export default async function handleOrders(chatId, text, locale) {
   if (action === "delete") {
     const id = parts[2];
     if (!isPositiveIntegerId(id)) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
+      await sendPlainText(chatId, t(locale, "generic_error"));
       return;
     }
     const order = await getOrderById(id);
     if (!order) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_failed")));
+      await sendPlainText(chatId, t(locale, "order_failed"));
       return;
     }
     const resp = await traccarRequest("delete", `/api/orders/${id}`);
     if (resp.status >= 200 && resp.status < 300) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_deleted")));
+      await sendPlainText(chatId, t(locale, "order_deleted"));
     } else {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "order_failed")));
+      await sendPlainText(chatId, t(locale, "order_failed"));
     }
     return;
   }
 
-  await telegramSendMessage(chatId, escapeMarkdown(t(locale, "orders_usage")));
+  await sendPlainText(chatId, t(locale, "orders_usage"));
 }
