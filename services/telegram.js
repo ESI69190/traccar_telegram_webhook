@@ -23,9 +23,15 @@ export async function telegramSendMessage(chatId, text, options) {
     const resp = await axios.post(TELEGRAM_API + "/sendMessage", payload, {
       validateStatus: () => true
     });
-    console.log("<- Telegram sendMessage", {
-      status: resp.status
-    });
+    if (resp.status !== 200) {
+      console.log("<- Telegram sendMessage", {
+        status: resp.status,
+        description: resp.data?.description,
+        text: text.slice(0, 200)
+      });
+    } else {
+      console.log("<- Telegram sendMessage", { status: resp.status });
+    }
     return resp.data;
   } catch (err) {
     console.error("Telegram sendMessage error:", err?.toString());
