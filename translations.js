@@ -11,7 +11,11 @@ export const TRANSLATIONS = {
       "/track <id> - show device location and status\n" +
       "/history <id> [n] - last n positions\n" +
       "/status <id> - device summary\n" +
-      "/engine <id> on|off - send engine command (if supported)",
+      "/engine <id> on|off - send engine command (if supported)\n" +
+      "/commands <id> <type> - send a custom command\n" +
+      "/orders get|create|update|delete [params] - manage orders\n" +
+      "/positions <id> [limit] - list recent positions\n" +
+      "/reports <type> <id> [days] - generate report",
     assoc_no_phone:
       'Send /assoc <international_phone> or press the "Share contact" button.',
     assoc_invalid_phone:
@@ -54,7 +58,7 @@ export const TRANSLATIONS = {
     order_failed: "Failed to process order.",
     positions_usage: "Usage: /positions <id> [limit]",
     positions_for: "Positions for",
-    reports_usage: "Usage: /reports <type>\nTypes: route, events, geofences, summary, trips, stops"
+    reports_usage: "Usage: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops"
   },
   fr: {
     start_intro: "Commandes disponibles :",
@@ -67,7 +71,11 @@ export const TRANSLATIONS = {
       "/track <id> - afficher la position et l état d un équipement\n" +
       "/history <id> [n] - dernières positions\n" +
       "/status <id> - résumé de l équipement\n" +
-      "/engine <id> on|off - envoyer commande moteur (si supporté)",
+      "/engine <id> on|off - envoyer commande moteur (si supporté)\n" +
+      "/commands <id> <type> - envoyer une commande personnalisée\n" +
+      "/orders get|create|update|delete [params] - gérer les ordres\n" +
+      "/positions <id> [limite] - lister les positions récentes\n" +
+      "/reports <type> <id> [jours] - générer un rapport",
     assoc_no_phone:
       'Envoyez /assoc <numero_international> ou appuyez sur le bouton "Partager mon contact".',
     assoc_invalid_phone:
@@ -113,6 +121,6 @@ export const TRANSLATIONS = {
     order_failed: "Échec du traitement de la commande.",
     positions_usage: "Usage : /positions <id> [limite]",
     positions_for: "Positions pour",
-    reports_usage: "Usage : /reports <type>\nTypes: route, events, geofences, summary, trips, stops"
+    reports_usage: "Usage : /reports <type> <id> [jours]\nTypes: route, events, geofences, summary, trips, stops"
   }
 };

@@ -17,15 +17,14 @@ export async function telegramSendMessage(chatId, text, options) {
     const payload = {
       chat_id: chatId,
       text,
-      parse_mode: options?.parse_mode || null,
+      parse_mode: options?.parse_mode || "MarkdownV2",
       reply_markup: options?.reply_markup
     };
     const resp = await axios.post(TELEGRAM_API + "/sendMessage", payload, {
       validateStatus: () => true
     });
     console.log("<- Telegram sendMessage", {
-      status: resp.status,
-      data: resp.data
+      status: resp.status
     });
     return resp.data;
   } catch (err) {

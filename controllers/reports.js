@@ -1,15 +1,68 @@
 // controllers/reports.js
 import { t } from "../services/i18n.js";
 import { findUserByChatId, traccarRequest } from "../services/traccar.js";
+import { findDeviceForUser } from "../services/permissions.js";
 import { telegramSendMessage } from "../services/telegram.js";
 import { escapeMarkdown } from "../services/security.js";
 
+const VALID_REPORT_TYPES = new Set([
+  "route",
+  "events",
+  "geofences",
+  "summary",
+  "trips",
+  "stops"
+]);
+
+function parseReportArgs(parts) {
+  const type = parts[1];
+  const identifier = parts[2] || "";
+  const days = parts[3] ? parseInt(parts[3], 10) : 1;
+  return { type, identifier, days: isNaN(days) || days <= 0 ? 1 : days };
+}
+
+function computeTimeRange(days) {
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+function formatReport(reportType, data) {
+  if (!Array.isArray(data) || !data.length) {
+    return "No data for report *" + escapeMarkdown(reportType) + "*.";
+  }
+  let out = "*" + escapeMarkdown(reportType) + "* report:\n";
+  data.slice(0, 10).forEach((row, idx) => {
+    out += `\n#${idx + 1}:\n`;
+    Object.keys(row).forEach((key) => {
+      if (typeof row[key] === "object" && row[key] !== null) return;
+      out += `- ${escapeMarkdown(key)}: ${escapeMarkdown(String(row[key]))}\n`;
+    });
+  });
+  if (data.length > 10) {
+    out += `\n... and ${data.length - 10} more row(s).`;
+  }
+  return out;
+}
+
 export async function handleReports(chatId, text, locale) {
   const parts = text.split(/\s+/);
-  const reportType = parts[1];
 
-  if (!reportType) {
-    await telegramSendMessage(chatId, "Usage: /reports <type>\nTypes: route, events, geofences, summary, trips, stops");
+  if (parts.length < 3) {
+    await telegramSendMessage(
+      chatId,
+      escapeMarkdown(t(locale, "reports_usage"))
+    );
+    return;
+  }
+
+  const { type, identifier, days } = parseReportArgs(parts);
+
+  if (!VALID_REPORT_TYPES.has(type)) {
+    await telegramSendMessage(
+      chatId,
+      escapeMarkdown(t(locale, "reports_usage"))
+    );
     return;
   }
 
@@ -19,7 +72,22 @@ export async function handleReports(chatId, text, locale) {
     return;
   }
 
-  // Simplified implementation for demonstration
-  // In a real scenario, we would parse parameters like deviceId, from, to, etc.
-  await telegramSendMessage(chatId, `Report type '${escapeMarkdown(reportType)}' requested. Implementation pending detailed parameter parsing.`);
+  const device = await findDeviceForUser(chatId, user.id, identifier);
+  if (!device) {
+    await telegramSendMessage(
+      chatId,
+      escapeMarkdown(t(locale, "track_device_not_found")) + escapeMarkdown(identifier)
+    );
+    return;
+  }
+
+  const { from, to } = computeTimeRange(days);
+  const params = { deviceId: device.id, from, to };
+  const resp = await traccarRequest("get", `/api/reports/${type}`, null, params);
+
+  if (resp.status >= 200 && resp.status < 300) {
+    await telegramSendMessage(chatId, formatReport(type, resp.data));
+  } else {
+    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
+  }
 }

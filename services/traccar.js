@@ -1,37 +1,97 @@
 // services/traccar.js
 import axios from "axios";
 
-const TRACCAR_USER = process.env.TRACCAR_USER;
-const TRACCAR_PASS = process.env.TRACCAR_PASS;
+const TRACCAR_USERNAME = process.env.TRACCAR_USERNAME || "";
+const TRACCAR_PASSWORD = process.env.TRACCAR_PASSWORD || "";
+const TRACCAR_API_KEY = process.env.TRACCAR_API_KEY || "";
 
-function getTraccarUrl() {
-  return process.env.TRACCAR_URL || "http://traccar:8082";
+function getTraccarApiUrl() {
+  return process.env.TRACCAR_API_URL || "http://traccar:8082";
+}
+
+function buildUrl(endpoint) {
+  const base = getTraccarApiUrl().replace(/\/$/, "");
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : "/" + endpoint;
+  return base + cleanEndpoint;
+}
+
+function getAuthHeaders() {
+  const headers = {};
+  if (TRACCAR_API_KEY) {
+    headers.Authorization = "Bearer " + TRACCAR_API_KEY;
+  }
+  return headers;
+
+}
+
+function getAuthConfig() {
+  if (TRACCAR_API_KEY) {
+    return { headers: getAuthHeaders() };
+  }
+  if (TRACCAR_USERNAME && TRACCAR_PASSWORD) {
+    return { auth: { username: TRACCAR_USERNAME, password: TRACCAR_PASSWORD } };
+  }
+  return {};
+}
+
+function safeLogError(err) {
+  const status = err && err.response && err.response.status;
+  console.error("Traccar request error:", String(err?.message || err));
+  if (status) {
+    console.error("Response status:", status);
+  }
 }
 
 export async function traccarRequest(method, endpoint, data, queryParams) {
-  const url = getTraccarUrl() + endpoint;
-  console.log("-> Traccar request", { method, url, authUser: TRACCAR_USER });
+  const url = buildUrl(endpoint);
+  const authConfig = getAuthConfig();
+  const config = {
+    method,
+    url,
+    ...authConfig,
+    data,
+    params: queryParams,
+    validateStatus: () => true,
+    headers: {
+      "Content-Type": "application/json",
+      ...(authConfig.headers || {})
+    }
+  };
+
+  console.log("-> Traccar request", { method, endpoint });
   try {
-    const resp = await axios({
-      method,
-      url,
-      auth: { username: TRACCAR_USER, password: TRACCAR_PASS },
-      data,
-      params: queryParams,
-      validateStatus: () => true,
-      headers: { "Content-Type": "application/json" }
-    });
-    console.log("<- Traccar response", {
-      status: resp.status,
-      statusText: resp.statusText
-    });
+    const resp = await axios(config);
+    console.log("<- Traccar response", { status: resp.status });
     return resp;
   } catch (err) {
-    const status = err && err.response && err.response.status;
-    console.error("Traccar request error:", String(err?.message || err));
-    if (status) {
-      console.error("Response status:", status);
+    safeLogError(err);
+    throw err;
+  }
+}
+
+export async function verifySession(email, password) {
+  const params = new URLSearchParams();
+  params.append("email", email);
+  params.append("password", password);
+
+  const url = buildUrl("/api/session");
+  const config = {
+    method: "post",
+    url,
+    data: params.toString(),
+    validateStatus: () => true,
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
     }
+  };
+
+  console.log("-> Traccar session verify", { method: "post", endpoint: "/api/session" });
+  try {
+    const resp = await axios(config);
+    console.log("<- Traccar session response", { status: resp.status });
+    return resp;
+  } catch (err) {
+    safeLogError(err);
     throw err;
   }
 }
@@ -106,39 +166,11 @@ export async function updateUserPhoneAndChat(userId, phoneIntl, chatId) {
   };
 }
 
-export async function traccarFindDeviceByIdentifier(identifier) {
-  const idClean = String(identifier || "").trim().toLowerCase();
-  if (!idClean) return null;
-  const resp = await traccarRequest("get", "/api/devices");
-  if (resp.status !== 200) return null;
-  const devices = resp.data || [];
-  for (let i = 0; i < devices.length; i++) {
-    const d = devices[i];
-    if (d.name && String(d.name).trim().toLowerCase() === idClean) return d;
-    if (d.uniqueId && String(d.uniqueId).trim().toLowerCase() === idClean)
-      return d;
-    if (d.attributes) {
-      const attrs = d.attributes;
-      if (
-        attrs.plate &&
-        String(attrs.plate).trim().toLowerCase() === idClean
-      )
-        return d;
-      if (
-        attrs.registration &&
-        String(attrs.registration).trim().toLowerCase() === idClean
-      )
-        return d;
-    }
-  }
-  return null;
-}
-
-export async function getLastPositions(deviceId, limit = 1) {
-  const resp = await traccarRequest(
-    "get",
-    `/api/positions?deviceId=${deviceId}&limit=${limit}`
-  );
+export async function getLastPositions(deviceId, from, to) {
+  const params = { deviceId };
+  if (from) params.from = from;
+  if (to) params.to = to;
+  const resp = await traccarRequest("get", "/api/positions", null, params);
   if (resp.status !== 200) return [];
   return resp.data || [];
 }
