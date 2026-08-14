@@ -2,7 +2,7 @@
 import { t } from "../services/i18n.js";
 import { findUserByChatId, traccarRequest } from "../services/traccar.js";
 import { findDeviceForUser } from "../services/permissions.js";
-import { telegramSendMessage } from "../services/telegram.js";
+import { telegramSendMessage, sendPlainText } from "../services/telegram.js";
 import { escapeMarkdown } from "../services/security.js";
 
 export async function handleCommands(chatId, text, locale) {
@@ -12,21 +12,21 @@ export async function handleCommands(chatId, text, locale) {
   const commandType = parts[3] || "";
 
   if (!action || !deviceId || !commandType) {
-    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "commands_usage")));
+    await sendPlainText(chatId, t(locale, "commands_usage"));
     return;
   }
 
   const user = await findUserByChatId(chatId);
   if (!user) {
-    await telegramSendMessage(chatId, t(locale, "start_assoc_prompt"));
+    await sendPlainText(chatId, t(locale, "start_assoc_prompt"));
     return;
   }
 
   const device = await findDeviceForUser(chatId, user.id, deviceId);
   if (!device) {
-    await telegramSendMessage(
+    await sendPlainText(
       chatId,
-      escapeMarkdown(t(locale, "track_device_not_found")) + escapeMarkdown(deviceId)
+      t(locale, "track_device_not_found") + deviceId
     );
     return;
   }
@@ -39,8 +39,8 @@ export async function handleCommands(chatId, text, locale) {
 
   const resp = await traccarRequest("post", "/api/commands/send", cmd);
   if (resp.status >= 200 && resp.status < 300) {
-    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "command_sent")));
+    await sendPlainText(chatId, t(locale, "command_sent"));
   } else {
-    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "command_failed")));
+    await sendPlainText(chatId, t(locale, "command_failed"));
   }
 }

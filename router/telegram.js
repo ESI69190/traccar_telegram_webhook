@@ -1,7 +1,7 @@
 // router/telegram.js
 import { getUserLocale, t } from "../services/i18n.js";
 import { findUserByChatId } from "../services/traccar.js";
-import { telegramSendMessage } from "../services/telegram.js";
+import { telegramSendMessage, sendPlainText } from "../services/telegram.js";
 import { handleAssoc } from "../controllers/assoc.js";
 import { handleTrack } from "../controllers/track.js";
 import { handleHistory } from "../controllers/history.js";
@@ -53,7 +53,7 @@ export async function handleTelegramUpdate(req, res) {
       if (!associatedUser) {
         startMsg += t(locale, "start_assoc_prompt");
       }
-      await telegramSendMessage(chatId, startMsg);
+      await sendPlainText(chatId, startMsg);
       return res.sendStatus(200);
     }
 
