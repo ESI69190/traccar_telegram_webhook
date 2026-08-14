@@ -14,7 +14,7 @@ import {
   updateUserPhoneAndChat,
   verifySession
 } from "../services/traccar.js";
-import { telegramSendMessage } from "../services/telegram.js";
+import { telegramSendMessage, sendPlainText } from "../services/telegram.js";
 
 function getAssocSecret() {
   return process.env.ASSOC_SECRET || null;
@@ -69,7 +69,7 @@ export async function handleAssoc(chatId, msg, locale) {
       one_time_keyboard: true,
       resize_keyboard: true
     };
-    await telegramSendMessage(chatId, t(locale, "share_contact_prompt"), {
+    await sendPlainText(chatId, t(locale, "share_contact_prompt"), {
       reply_markup: keyboard
     });
     return true;
@@ -93,7 +93,7 @@ export async function handleAssoc(chatId, msg, locale) {
         one_time_keyboard: true,
         resize_keyboard: true
       };
-      await telegramSendMessage(chatId, t(locale, "assoc_no_phone"), {
+      await sendPlainText(chatId, t(locale, "assoc_no_phone"), {
         reply_markup: keyboard
       });
       return true;
@@ -101,12 +101,12 @@ export async function handleAssoc(chatId, msg, locale) {
 
     const phoneCandidate = normalizePhone(cleaned);
     if (!phoneCandidate || phoneCandidate.replace(/\D/g, "").length < 6) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_invalid_phone")));
+      await sendPlainText(chatId, t(locale, "assoc_invalid_phone"));
       return true;
     }
 
     if (!getAssocSecret()) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_confirm_failed")));
+      await sendPlainText(chatId, t(locale, "assoc_confirm_failed"));
       return true;
     }
 
@@ -117,13 +117,13 @@ export async function handleAssoc(chatId, msg, locale) {
         phoneCandidate,
         awaitingAssocConfirm: true
       });
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_encrypted_required")));
+      await sendPlainText(chatId, t(locale, "assoc_encrypted_required"));
       return true;
     }
 
     const decrypted = decryptAssocPassword(arg2);
     if (!decrypted) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_confirm_failed")));
+      await sendPlainText(chatId, t(locale, "assoc_confirm_failed"));
       return true;
     }
 
@@ -131,7 +131,7 @@ export async function handleAssoc(chatId, msg, locale) {
     if (userByPhone && userByPhone.email) {
       const valid = await verifyUserPassword(userByPhone.email, decrypted);
       if (!valid) {
-        await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_confirm_failed")));
+        await sendPlainText(chatId, t(locale, "assoc_confirm_failed"));
         return true;
       }
       const upd = await updateUserPhoneAndChat(
@@ -140,13 +140,13 @@ export async function handleAssoc(chatId, msg, locale) {
         chatId
       );
       if (upd.ok) {
-        await telegramSendMessage(
+        await sendPlainText(
           chatId,
-          escapeMarkdown(t(locale, "assoc_confirm_success")) +
-            escapeMarkdown(upd.user.name || userByPhone.email || userByPhone.id)
+          t(locale, "assoc_confirm_success") +
+            (upd.user.name || userByPhone.email || userByPhone.id)
         );
       } else {
-        await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
+        await sendPlainText(chatId, t(locale, "generic_error"));
       }
       return true;
     }
@@ -158,7 +158,7 @@ export async function handleAssoc(chatId, msg, locale) {
       awaitingAssocConfirm: true,
       assocPasswordPlain: decrypted
     });
-    await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_no_user_ask_email")));
+    await sendPlainText(chatId, t(locale, "assoc_no_user_ask_email"));
     return true;
   }
 
@@ -168,8 +168,8 @@ export async function handleAssoc(chatId, msg, locale) {
     console.log("Contact shared phone:", redactPhone(phone), "chatId:", chatId);
 
     if (!getAssocSecret()) {
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_confirm_failed")));
-      await telegramSendMessage(chatId, "Keyboard removed.", {
+      await sendPlainText(chatId, t(locale, "assoc_confirm_failed"));
+      await sendPlainText(chatId, "Keyboard removed.", {
         reply_markup: { remove_keyboard: true }
       });
       return true;
@@ -181,9 +181,9 @@ export async function handleAssoc(chatId, msg, locale) {
       phoneCandidate: phone,
       awaitingAssocConfirm: true
     });
-    await telegramSendMessage(
+    await sendPlainText(
       chatId,
-      escapeMarkdown(t(locale, "assoc_encrypted_required")),
+      t(locale, "assoc_encrypted_required"),
       { reply_markup: { remove_keyboard: true } }
     );
     return true;
@@ -195,7 +195,7 @@ export async function handleAssoc(chatId, msg, locale) {
       const encryptedBase64 = String(msg.text || "").trim();
       const decrypted = decryptAssocPassword(encryptedBase64);
       if (!decrypted) {
-        await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_confirm_failed")));
+        await sendPlainText(chatId, t(locale, "assoc_confirm_failed"));
         clearPending(chatId);
         return true;
       }
@@ -206,7 +206,7 @@ export async function handleAssoc(chatId, msg, locale) {
       if (userByPhone && userByPhone.email) {
         const valid = await verifyUserPassword(userByPhone.email, decrypted);
         if (!valid) {
-          await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_confirm_failed")));
+          await sendPlainText(chatId, t(locale, "assoc_confirm_failed"));
           clearPending(chatId);
           return true;
         }
@@ -216,13 +216,13 @@ export async function handleAssoc(chatId, msg, locale) {
           chatId
         );
         if (upd.ok) {
-          await telegramSendMessage(
+          await sendPlainText(
             chatId,
-            escapeMarkdown(t(locale, "assoc_confirm_success")) +
-              escapeMarkdown(upd.user.name || userByPhone.email || userByPhone.id)
+            t(locale, "assoc_confirm_success") +
+              (upd.user.name || userByPhone.email || userByPhone.id)
           );
         } else {
-          await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
+          await sendPlainText(chatId, t(locale, "generic_error"));
         }
         clearPending(chatId);
         return true;
@@ -230,7 +230,7 @@ export async function handleAssoc(chatId, msg, locale) {
 
       pending.awaitingEmail = true;
       pending.assocPasswordPlain = decrypted;
-      await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_no_user_ask_email")));
+      await sendPlainText(chatId, t(locale, "assoc_no_user_ask_email"));
       return true;
     }
 
@@ -243,16 +243,16 @@ export async function handleAssoc(chatId, msg, locale) {
           candidateEmail.toLowerCase() === "annuler"
         ) {
           clearPending(chatId);
-          await telegramSendMessage(chatId, escapeMarkdown(t(locale, "cancelled")));
+          await sendPlainText(chatId, t(locale, "cancelled"));
           return true;
         }
-        await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_email_invalid")));
+        await sendPlainText(chatId, t(locale, "assoc_email_invalid"));
         return true;
       }
 
       const userByEmail = await findUserByEmail(candidateEmail);
       if (!userByEmail) {
-        await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_email_not_found")));
+        await sendPlainText(chatId, t(locale, "assoc_email_not_found"));
         return true;
       }
 
@@ -262,7 +262,7 @@ export async function handleAssoc(chatId, msg, locale) {
           pending.assocPasswordPlain
         );
         if (!valid) {
-          await telegramSendMessage(chatId, escapeMarkdown(t(locale, "assoc_confirm_failed")));
+          await sendPlainText(chatId, t(locale, "assoc_confirm_failed"));
           clearPending(chatId);
           return true;
         }
@@ -270,7 +270,7 @@ export async function handleAssoc(chatId, msg, locale) {
 
       const phoneToSet = pending.phoneCandidate || "";
       if (!phoneToSet) {
-        await telegramSendMessage(
+        await sendPlainText(
           chatId,
           "No phone candidate in pending state. Send /assoc <phone> or share contact."
         );
@@ -285,13 +285,13 @@ export async function handleAssoc(chatId, msg, locale) {
       );
       clearPending(chatId);
       if (upd2.ok) {
-        await telegramSendMessage(
+        await sendPlainText(
           chatId,
-          escapeMarkdown(t(locale, "assoc_updated_by_email")) +
-            escapeMarkdown(upd2.user.name || candidateEmail)
+          t(locale, "assoc_updated_by_email") +
+            (upd2.user.name || candidateEmail)
         );
       } else {
-        await telegramSendMessage(chatId, escapeMarkdown(t(locale, "generic_error")));
+        await sendPlainText(chatId, t(locale, "generic_error"));
       }
       return true;
     }

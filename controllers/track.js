@@ -2,7 +2,7 @@
 import { t } from "../services/i18n.js";
 import { findUserByChatId, getLastPositions } from "../services/traccar.js";
 import { getDevicesForUser, findDeviceForUser } from "../services/permissions.js";
-import { telegramSendMessage } from "../services/telegram.js";
+import { telegramSendMessage, sendPlainText } from "../services/telegram.js";
 import { formatDate, escapeMarkdown, markdownLink } from "../services/security.js";
 
 const SENSITIVE_ATTRS = new Set([
@@ -25,35 +25,35 @@ export async function handleTrack(chatId, text, locale) {
 
   const user = await findUserByChatId(chatId);
   if (!user) {
-    await telegramSendMessage(chatId, t(locale, "start_assoc_prompt"));
+    await sendPlainText(chatId, t(locale, "start_assoc_prompt"));
     return;
   }
 
   if (!identifier) {
     const devices = await getDevicesForUser(chatId, user.id);
     if (!devices.length) {
-      await telegramSendMessage(
+      await sendPlainText(
         chatId,
-        escapeMarkdown(t(locale, "track_listing_devices")) + "\n\\(none\\)"
+        t(locale, "track_listing_devices") + "\n(none)"
       );
       return;
     }
 
     const lines = devices.map(
-      (d) => "- " + escapeMarkdown(d.name || d.uniqueId || "id:" + d.id) + " \\(id:" + d.id + "\\)"
+      (d) => "- " + (d.name || d.uniqueId || "id:" + d.id) + " (id:" + d.id + ")"
     );
-    await telegramSendMessage(
+    await sendPlainText(
       chatId,
-      escapeMarkdown(t(locale, "track_listing_devices")) + "\n" + lines.join("\n")
+      t(locale, "track_listing_devices") + "\n" + lines.join("\n")
     );
     return;
   }
 
   const device = await findDeviceForUser(chatId, user.id, identifier);
   if (!device) {
-    await telegramSendMessage(
+    await sendPlainText(
       chatId,
-      escapeMarkdown(t(locale, "track_device_not_found")) + escapeMarkdown(identifier)
+      t(locale, "track_device_not_found") + identifier
     );
     return;
   }

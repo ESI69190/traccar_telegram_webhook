@@ -11,6 +11,7 @@ import {
   decryptAssocPassword,
   markdownLink
 } from "../services/security.js";
+import { sendPlainText } from "../services/telegram.js";
 
 test("normalizePhone strips surrounding quotes", () => {
   assert.strictEqual(normalizePhone('"+33123456789"'), "+33123456789");
@@ -94,6 +95,43 @@ test("markdownLink escapes label and URL", () => {
   const link = markdownLink("Paris, France", "https://example.com?q=paris");
   assert.ok(link.startsWith("[Paris, France]"));
   assert.ok(link.includes("https://example.com?q=paris"));
+});
+
+test("sendPlainText escapes start_commands help text", async () => {
+  const text =
+    "Available commands:\n\n" +
+    "/assoc - associate phone and Telegram chat_id (secure confirmation required)\n" +
+    "/assoc telegram - show contact share button\n" +
+    "/track - list devices in your group\n" +
+    "/track <id> - show device";
+  const escaped = escapeMarkdown(text);
+  assert.ok(escaped.includes("\\-"), "hyphens must be escaped");
+  assert.ok(escaped.includes("\\_"), "underscores must be escaped");
+  assert.ok(escaped.includes("\\("), "parentheses must be escaped");
+  assert.ok(escaped.includes("\\>"), "greater-than must be escaped");
+});
+
+test("sendPlainText escapes assoc_no_phone prompt", async () => {
+  const text = 'Send /assoc <international_phone> or press the "Share contact" button.';
+  const escaped = escapeMarkdown(text);
+  assert.ok(escaped.includes("\\>"), "greater-than must be escaped");
+  assert.ok(escaped.includes('"Share contact"'), "double quotes must be preserved");
+});
+
+test("sendPlainText escapes device list with hyphens and parentheses", async () => {
+  const text = "Devices in your group:\n- BMW E90 (id:2)\n- iPhone (id:1)";
+  const escaped = escapeMarkdown(text);
+  assert.ok(escaped.includes("\\- BMW"), "leading hyphen must be escaped");
+  assert.ok(escaped.includes("\\(id:2\\)"), "parentheses must be escaped");
+  assert.ok(escaped.includes("\\(id:1\\)"), "parentheses must be escaped");
+});
+
+test("sendPlainText preserves intentional Markdown formatting when not used", () => {
+  const label = "Paris, France";
+  const url = "https://example.com?q=paris";
+  const link = markdownLink(label, url);
+  assert.ok(link.startsWith("[Paris, France]"));
+  assert.ok(link.includes("(https://example.com?q=paris)"));
 });
 
 test("encryptAssocPassword round-trips with decryptAssocPassword", () => {
