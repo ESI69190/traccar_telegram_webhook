@@ -286,6 +286,10 @@ test("handleOrders update fetches order and uses openapi schema", async () => {
   const telegram = setupTelegramNock();
   mockUser(traccar, 123, 1);
   traccar
+    .get("/api/orders")
+    .query({ userId: "1" })
+    .reply(200, [{ id: 100, uniqueId: "ORD-100" }]);
+  traccar
     .get("/api/orders/100")
     .reply(200, { id: 100, uniqueId: "ORD-100", description: "old", fromAddress: "a", toAddress: "b", attributes: {} });
   traccar
@@ -305,7 +309,7 @@ test("handleOrders update fetches order and uses openapi schema", async () => {
 
   assert.ok(
     traccar.isDone(),
-    `Expected GET and PUT /api/orders/100 to be consumed. Pending: ${traccar.pendingMocks()}`
+    `Expected GET /api/orders?userId=1, GET and PUT /api/orders/100 to be consumed. Pending: ${traccar.pendingMocks()}`
   );
 });
 
@@ -314,6 +318,10 @@ test("handleOrders delete fetches order before deleting", async () => {
   const traccar = setupTraccarNock();
   const telegram = setupTelegramNock();
   mockUser(traccar, 123, 1);
+  traccar
+    .get("/api/orders")
+    .query({ userId: "1" })
+    .reply(200, [{ id: 100, uniqueId: "ORD-100" }]);
   traccar
     .get("/api/orders/100")
     .reply(200, { id: 100, uniqueId: "ORD-100" });
@@ -328,7 +336,7 @@ test("handleOrders delete fetches order before deleting", async () => {
 
   assert.ok(
     traccar.isDone(),
-    `Expected GET and DELETE /api/orders/100 to be consumed. Pending: ${traccar.pendingMocks()}`
+    `Expected GET /api/orders?userId=1, GET and DELETE /api/orders/100 to be consumed. Pending: ${traccar.pendingMocks()}`
   );
 });
 
@@ -337,7 +345,10 @@ test("handleOrders update returns generic failure for nonexistent order", async 
   const traccar = setupTraccarNock();
   const telegram = setupTelegramNock();
   mockUser(traccar, 123, 1);
-  traccar.get("/api/orders/999").reply(404, {});
+  traccar
+    .get("/api/orders")
+    .query({ userId: "1" })
+    .reply(200, []); // User has no orders, so ownership check fails
   telegram
     .post("/bot" + process.env.BOT_TOKEN + "/sendMessage")
     .reply(200, { ok: true });
@@ -346,7 +357,7 @@ test("handleOrders update returns generic failure for nonexistent order", async 
 
   assert.ok(
     traccar.isDone(),
-    `Expected GET /api/orders/999 to be consumed and no PUT. Pending: ${traccar.pendingMocks()}`
+    `Expected GET /api/orders?userId=1 to be consumed and no PUT. Pending: ${traccar.pendingMocks()}`
   );
 });
 
@@ -413,5 +424,125 @@ test("handleReports requests route report with from/to", async () => {
   assert.ok(
     traccar.isDone(),
     `Expected reports/route mock to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+});
+
+// IDOR authorization tests for orders
+test("handleOrders update rejects other user's order (IDOR)", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  // Two users: userA (chatId 111, userId 1) and userB (chatId 222, userId 2)
+  mockTwoUsers(traccar, 111, 1, 222, 2);
+  // UserA's orders only
+  traccar
+    .get("/api/orders")
+    .query({ userId: "1" })
+    .reply(200, [{ id: 100, uniqueId: "ORD-100" }]); // UserA owns order 100
+  // UserA tries to update UserB's order (order 200)
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage")
+    .reply(200, { ok: true });
+
+  await handleOrders("111", "/orders update 200 ORD-200 desc from to", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected ownership check to fail, no PUT to /api/orders/200. Pending: ${traccar.pendingMocks()}`
+  );
+});
+
+test("handleOrders delete rejects other user's order (IDOR)", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockTwoUsers(traccar, 111, 1, 222, 2);
+  // UserA's orders only
+  traccar
+    .get("/api/orders")
+    .query({ userId: "1" })
+    .reply(200, [{ id: 100, uniqueId: "ORD-100" }]); // UserA owns order 100
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage")
+    .reply(200, { ok: true });
+
+  await handleOrders("111", "/orders delete 200", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected ownership check to fail, no DELETE to /api/orders/200. Pending: ${traccar.pendingMocks()}`
+  );
+});
+
+test("handleOrders get returns only user's own orders", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockTwoUsers(traccar, 111, 1, 222, 2);
+  // UserA's orders
+  traccar
+    .get("/api/orders")
+    .query({ userId: "1" })
+    .reply(200, [{ id: 100, uniqueId: "ORD-100" }]);
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage")
+    .reply(200, { ok: true });
+
+  await handleOrders("111", "/orders get", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected GET /api/orders?userId=1 to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+});
+
+test("handleOrders update with malformed order ID is rejected", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage")
+    .reply(200, { ok: true });
+
+  await handleOrders("123", "/orders update abc name desc from to", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected malformed ID to be rejected before any Traccar call. Pending: ${traccar.pendingMocks()}`
+  );
+});
+
+test("handleOrders update with negative order ID is rejected", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage")
+    .reply(200, { ok: true });
+
+  await handleOrders("123", "/orders update -1 name desc from to", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected negative ID to be rejected before any Traccar call. Pending: ${traccar.pendingMocks()}`
+  );
+});
+
+test("handleOrders update is rejected", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage")
+    .reply(200, { ok: true });
+
+  await handleOrders("123", "/orders update", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected missing ID to be rejected. Pending: ${traccar.pendingMocks()}`
   );
 });

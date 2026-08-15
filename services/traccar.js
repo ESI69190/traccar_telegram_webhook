@@ -180,3 +180,11 @@ export async function getOrderById(orderId) {
   if (resp.status >= 200 && resp.status < 300) return resp.data || null;
   return null;
 }
+
+export async function verifyOrderOwnership(userId, orderId) {
+  // Fetch user's orders and check if the requested order is among them
+  const resp = await traccarRequest("get", "/api/orders", null, { userId: String(userId) });
+  if (resp.status !== 200) return false;
+  const orders = resp.data || [];
+  return orders.some((order) => String(order.id) === String(orderId));
+}
