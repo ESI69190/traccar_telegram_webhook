@@ -3,7 +3,7 @@ import { t } from "../services/i18n.js";
 import { findUserByChatId, traccarRequest } from "../services/traccar.js";
 import { findDeviceForUser } from "../services/permissions.js";
 import { telegramSendMessage, sendPlainText } from "../services/telegram.js";
-import { escapeMarkdown } from "../services/security.js";
+import { escapeMarkdown, MAX_LIMIT } from "../services/security.js";
 
 const VALID_REPORT_TYPES = new Set([
   "route",
@@ -14,11 +14,18 @@ const VALID_REPORT_TYPES = new Set([
   "stops"
 ]);
 
+// Report bounds constants
+const MIN_DAYS = 1;
+const MAX_DAYS = 90; // Maximum days for report range to prevent unbounded queries
+
 function parseReportArgs(parts) {
   const type = parts[1];
   const identifier = parts[2] || "";
   const days = parts[3] ? parseInt(parts[3], 10) : 1;
-  return { type, identifier, days: isNaN(days) || days <= 0 ? 1 : days };
+  // Validate and bound days parameter
+  let validatedDays = isNaN(days) || days < MIN_DAYS ? MIN_DAYS : days;
+  validatedDays = validatedDays > MAX_DAYS ? MAX_DAYS : validatedDays;
+  return { type, identifier, days: validatedDays };
 }
 
 function computeTimeRange(days) {

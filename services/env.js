@@ -1,4 +1,19 @@
 // services/env.js
+const MIN_ASSOC_SECRET_LENGTH = 32;
+
+function validateAssocSecret(secret) {
+  if (!secret) return { ok: false, reason: "missing" };
+  if (secret.length < MIN_ASSOC_SECRET_LENGTH) {
+    return { ok: false, reason: `too_short (min ${MIN_ASSOC_SECRET_LENGTH} chars)` };
+  }
+  // Check for basic entropy (not all same character, not simple patterns)
+  const uniqueChars = new Set(secret).size;
+  if (uniqueChars < 8) {
+    return { ok: false, reason: "low_entropy (too few unique characters)" };
+  }
+  return { ok: true };
+}
+
 export function checkEnv() {
   const missing = [];
 
@@ -32,15 +47,13 @@ export function checkEnv() {
     }
   }
 
-  if (!process.env.ASSOC_SECRET) {
+  const assocSecretValidation = validateAssocSecret(process.env.ASSOC_SECRET);
+  if (!assocSecretValidation.ok) {
+    const msg = `ASSOC_SECRET ${assocSecretValidation.reason}`;
     if (process.env.NODE_ENV === "production") {
-      console.warn(
-        "ASSOC_SECRET not set in production: association is disabled. Set ASSOC_SECRET for secure confirmation."
-      );
+      console.error(`SECURITY ERROR: ${msg}. Association disabled in production.`);
     } else {
-      console.warn(
-        "ASSOC_SECRET not set: association confirmation will not accept encrypted password. Set ASSOC_SECRET for secure confirmation."
-      );
+      console.warn(`WARNING: ${msg}. Association will not work securely.`);
     }
   }
 }
