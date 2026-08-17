@@ -16,14 +16,27 @@ export function normalizeLocale(locale) {
   return SUPPORTED_LOCALES.has(base) ? base : "en";
 }
 
+/**
+ * Get supported locale from a candidate, or null if unsupported/missing.
+ * Does not fall back to English - returns null to allow caller to try next source.
+ */
+function getSupportedLocale(locale) {
+  if (!locale) return null;
+  const base = String(locale).toLowerCase().split(/[-_]/)[0];
+  return SUPPORTED_LOCALES.has(base) ? base : null;
+}
+
 export function getUserLocale(user, telegramLanguageCode) {
   const attrs = (user && user.attributes) || {};
-  // Telegram locale takes priority over Traccar stored locale
-  if (telegramLanguageCode) {
-    return normalizeLocale(telegramLanguageCode);
-  }
-  const loc = attrs.locale || attrs.language || user?.language;
-  return normalizeLocale(loc);
+
+  // Priority: Telegram locale -> Traccar attributes.locale -> Traccar attributes.language -> user.language -> English
+  return (
+    getSupportedLocale(telegramLanguageCode) ||
+    getSupportedLocale(attrs.locale) ||
+    getSupportedLocale(attrs.language) ||
+    getSupportedLocale(user?.language) ||
+    "en"
+  );
 }
 
 export function t(locale, key) {

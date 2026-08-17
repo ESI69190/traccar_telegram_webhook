@@ -115,3 +115,63 @@ test("getUserLocale handles lowercase telegram locale", async () => {
   const locale = getUserLocale(user, "pt-BR");
   assert.strictEqual(locale, "pt", "Lowercase pt-BR should normalize to pt");
 });
+
+// --- Regression tests for unsupported Telegram locale fallback ---
+
+test("getUserLocale: supported Telegram overrides Traccar locale", async () => {
+  const user = { attributes: { locale: "es-ES" } };
+  const locale = getUserLocale(user, "fr-FR");
+  assert.strictEqual(locale, "fr", "Supported Telegram fr-FR should override Traccar es");
+});
+
+test("getUserLocale: unsupported Telegram falls back to Traccar attributes.locale", async () => {
+  const user = { attributes: { locale: "fr-FR" } };
+  const locale = getUserLocale(user, "de");
+  assert.strictEqual(locale, "fr", "Unsupported Telegram de should fall back to Traccar fr");
+});
+
+test("getUserLocale: unsupported Telegram + unsupported attributes.locale falls back to attributes.language", async () => {
+  const user = { attributes: { locale: "xx", language: "tr" } };
+  const locale = getUserLocale(user, "de");
+  assert.strictEqual(locale, "tr", "Unsupported Telegram de + unsupported xx should fall back to tr");
+});
+
+test("getUserLocale: attributes.locale takes priority over attributes.language", async () => {
+  const user = { attributes: { locale: "es-ES", language: "fr" } };
+  const locale = getUserLocale(user, null);
+  assert.strictEqual(locale, "es", "attributes.locale es should take priority over attributes.language fr");
+});
+
+test("getUserLocale: attributes.language fallback when no attributes.locale", async () => {
+  const user = { attributes: { language: "tr" } };
+  const locale = getUserLocale(user, null);
+  assert.strictEqual(locale, "tr", "attributes.language tr should be used when no attributes.locale");
+});
+
+test("getUserLocale: user.language fallback when no attributes", async () => {
+  const user = { language: "ru" };
+  const locale = getUserLocale(user, null);
+  assert.strictEqual(locale, "ru", "user.language ru should be used when no attributes");
+});
+
+test("getUserLocale: everything unsupported falls back to English", async () => {
+  const user = { attributes: { locale: "zh", language: "it" }, language: "nl" };
+  const locale = getUserLocale(user, "de");
+  assert.strictEqual(locale, "en", "All unsupported should fall back to English");
+});
+
+test("getUserLocale: pre-association with supported Telegram locale", async () => {
+  const locale = getUserLocale(null, "fr-FR");
+  assert.strictEqual(locale, "fr", "Pre-association with fr-FR should resolve to fr");
+});
+
+test("getUserLocale: pre-association with unsupported Telegram locale", async () => {
+  const locale = getUserLocale(null, "de");
+  assert.strictEqual(locale, "en", "Pre-association with unsupported de should fall back to English");
+});
+
+test("getUserLocale: empty Telegram locale falls back to Traccar", async () => {
+  const user = { attributes: { locale: "es-ES" } };
+  const locale = getUserLocale(user, "");
+  assert.strictEqual(locale, "es", "Empty Telegram locale should fall back to Traccar es");
+});
