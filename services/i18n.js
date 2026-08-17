@@ -16,8 +16,12 @@ export function normalizeLocale(locale) {
   return SUPPORTED_LOCALES.has(base) ? base : "en";
 }
 
-export function getUserLocale(user) {
+export function getUserLocale(user, telegramLanguageCode) {
   const attrs = (user && user.attributes) || {};
+  // Telegram locale takes priority over Traccar stored locale
+  if (telegramLanguageCode) {
+    return normalizeLocale(telegramLanguageCode);
+  }
   const loc = attrs.locale || attrs.language || user?.language;
   return normalizeLocale(loc);
 }
