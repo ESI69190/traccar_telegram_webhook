@@ -42,7 +42,7 @@ Provides secure user association, per-user device access via device attributes, 
 - `/reports <type> <id> [days]` — generate report (types: route, events, geofences, summary, trips, stops; days: 1-90, default 1)
 
 ### Internationalization
-- Locale taken from Traccar user attributes (`attributes.locale` or `attributes.language`) or fallback to English
+- Locale priority: Telegram user locale → Traccar user attributes (`attributes.locale` or `attributes.language`) → fallback to English
 - Supported locales: **en, fr, es, pt, tr, ru** (with regional variants like en-US, fr-FR, es-ES, pt-BR, tr-TR, ru-RU)
 - Telegram command menu localized for all supported languages
 - Date formatting uses locale-appropriate Intl locale

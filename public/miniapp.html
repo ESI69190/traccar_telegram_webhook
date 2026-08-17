@@ -6,119 +6,188 @@
   <title id="pageTitle">Connect your Traccar account</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    * { box-sizing: border-box; }
+    :root {
+      --brand-bg: #ECF0F4;
+      --brand-primary: #4F415D;
+      --brand-secondary: #484F51;
+      --brand-surface: #FFFFFF;
+      --brand-border: #C8CDD2;
+      --brand-muted: #71777A;
+      --brand-danger-bg: #FFF0F0;
+      --brand-danger-border: #D96B6B;
+      --brand-danger-text: #9D2020;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
     body {
       margin: 0;
       padding: 0;
+      min-height: 100%;
+      background: var(--brand-bg);
+    }
+
+    body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #ffffff;
-      color: #000000;
+      color: var(--brand-secondary);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
+
     .container {
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 16px;
-      max-width: 100%;
       width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 20px 16px calc(24px + env(safe-area-inset-bottom));
     }
+
     .header {
       text-align: center;
-      padding: 24px 16px 16px;
+      padding: 28px 16px 22px;
     }
+
+    .brand-mark {
+      width: 54px;
+      height: 54px;
+      margin: 0 auto 14px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: var(--brand-primary);
+      color: var(--brand-bg);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      box-shadow: 0 8px 24px rgba(79, 65, 93, 0.18);
+    }
+
     .header h1 {
       margin: 0;
-      font-size: 22px;
-      font-weight: 600;
-      color: #1a1a1a;
+      font-size: 23px;
+      line-height: 1.25;
+      font-weight: 700;
+      color: var(--brand-primary);
     }
+
+    .card {
+      background: var(--brand-surface);
+      border: 1px solid rgba(72, 79, 81, 0.10);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(72, 79, 81, 0.08);
+    }
+
     .form-group {
       margin-bottom: 16px;
       width: 100%;
     }
+
     .form-group label {
       display: block;
-      margin-bottom: 6px;
+      margin-bottom: 7px;
       font-size: 14px;
-      font-weight: 500;
-      color: #333333;
+      font-weight: 600;
+      color: var(--brand-secondary);
     }
+
     .form-group input {
       width: 100%;
-      padding: 14px 16px;
+      padding: 14px 15px;
       font-size: 16px;
-      border: 1px solid #d1d1d6;
-      border-radius: 10px;
-      background: #f7f7f8;
-      color: #000000;
+      border: 1px solid var(--brand-border);
+      border-radius: 11px;
+      background: #F8FAFB;
+      color: var(--brand-secondary);
       outline: none;
-      transition: border-color 0.2s, background 0.2s;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
     }
+
     .form-group input:focus {
-      border-color: #007aff;
-      background: #ffffff;
+      border-color: var(--brand-primary);
+      background: var(--brand-surface);
+      box-shadow: 0 0 0 3px rgba(79, 65, 93, 0.12);
     }
+
     .form-group input::placeholder {
-      color: #8e8e93;
+      color: var(--brand-muted);
     }
+
     .btn {
       width: 100%;
       padding: 16px;
       font-size: 17px;
-      font-weight: 600;
-      color: #ffffff;
-      background: #007aff;
+      font-weight: 700;
+      color: var(--brand-bg);
+      background: var(--brand-primary);
       border: none;
-      border-radius: 10px;
+      border-radius: 11px;
       cursor: pointer;
-      transition: background 0.2s, opacity 0.2s;
+      transition: transform 0.15s, background 0.2s, opacity 0.2s, box-shadow 0.2s;
+      box-shadow: 0 8px 20px rgba(79, 65, 93, 0.20);
     }
+
     .btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+      box-shadow: none;
     }
+
     .btn:not(:disabled):active {
-      background: #005ecb;
+      background: var(--brand-secondary);
+      transform: translateY(1px);
     }
+
     .error {
-      background: #fff0f0;
-      border: 1px solid #ff6b6b;
-      color: #c00;
+      background: var(--brand-danger-bg);
+      border: 1px solid var(--brand-danger-border);
+      color: var(--brand-danger-text);
       padding: 12px 16px;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 14px;
       margin-bottom: 16px;
       display: none;
     }
+
     .error.visible {
       display: block;
     }
+
     .loading {
       display: none;
       text-align: center;
-      padding: 24px;
+      padding: 26px 12px 8px;
     }
+
     .loading.visible {
       display: block;
     }
+
     .spinner {
-      width: 24px;
-      height: 24px;
-      border: 3px solid #e0e0e0;
-      border-top-color: #007aff;
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(79, 65, 93, 0.18);
+      border-top-color: var(--brand-primary);
       border-radius: 50%;
       margin: 0 auto 12px;
       animation: spin 0.8s linear infinite;
     }
+
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
+
     .loading p {
       margin: 0;
-      color: #8e8e93;
+      color: var(--brand-muted);
       font-size: 15px;
     }
   </style>
@@ -126,12 +195,14 @@
 <body>
   <div class="container">
     <header class="header">
+      <div class="brand-mark" aria-hidden="true">EI</div>
       <h1 id="title">Connect your Traccar account</h1>
     </header>
 
-    <div id="error" class="error" role="alert"></div>
+    <div class="card">
+      <div id="error" class="error" role="alert"></div>
 
-    <form id="form" novalidate>
+      <form id="form" novalidate>
       <div class="form-group">
         <label for="identifier">Email or phone</label>
         <input
@@ -159,11 +230,12 @@
       </div>
 
       <button type="submit" id="submitBtn" class="btn">Connect account</button>
-    </form>
+      </form>
 
-    <div id="loading" class="loading" role="status" aria-live="polite">
-      <div class="spinner"></div>
-      <p id="loadingText">Connecting...</p>
+      <div id="loading" class="loading" role="status" aria-live="polite">
+        <div class="spinner"></div>
+        <p id="loadingText">Connecting...</p>
+      </div>
     </div>
   </div>
 
@@ -183,13 +255,8 @@
       // Expand to full height
       tg.expand();
 
-      // Theme handling
-      tg.onEvent('themeChanged', function() {
-        document.body.style.background = tg.backgroundColor || '#ffffff';
-        document.body.style.color = tg.textColor || '#000000';
-      });
-      document.body.style.background = tg.backgroundColor || '#ffffff';
-      document.body.style.color = tg.textColor || '#000000';
+      // Keep Eyeshield-Informatique branding stable regardless of Telegram theme.
+      // Telegram still controls the WebApp container, but page colors remain brand-defined.
 
       // Get translations from URL params or use defaults
       const urlParams = new URLSearchParams(window.location.search);

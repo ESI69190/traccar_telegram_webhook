@@ -2,7 +2,7 @@
 import { validateInitData, getInitDataMaxAge, getInitDataFutureTolerance } from "../services/telegramInitData.js";
 import { findUserByEmail, findUserByPhone, getUserById, updateUserPhoneAndChat, verifySession } from "../services/traccar.js";
 import { normalizePhone, isValidEmail } from "../services/security.js";
-import { t } from "../services/i18n.js";
+import { getUserLocale, t } from "../services/i18n.js";
 import { telegramSendMessage } from "../services/telegram.js";
 
 /**
@@ -62,6 +62,7 @@ export async function handleMiniAppAssociate(req, res) {
 
     const telegramUser = validation.user;
     const telegramUserId = String(telegramUser.id);
+    const telegramLanguageCode = telegramUser.language_code || null;
 
     // Resolve identifier (email or phone)
     let user = null;
@@ -119,9 +120,12 @@ export async function handleMiniAppAssociate(req, res) {
       return res.status(500).json({ ok: false, error: "association_failed" });
     }
 
+    // Determine locale for success message (Telegram locale > Traccar locale > English)
+    const locale = getUserLocale(user, telegramLanguageCode);
+
     // Send success message to Telegram user
     try {
-      await telegramSendMessage(telegramUserId, t("en", "miniapp_assoc_success"), { parse_mode: "MarkdownV2" });
+      await telegramSendMessage(telegramUserId, t(locale, "miniapp_assoc_success"), { parse_mode: "MarkdownV2" });
     } catch (e) {
       // Non-fatal: association succeeded but notification failed
       console.warn("Failed to send Telegram notification:", e?.toString());

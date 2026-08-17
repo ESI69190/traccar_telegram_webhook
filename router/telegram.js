@@ -40,7 +40,8 @@ export async function handleTelegramUpdate(req, res) {
     if (!chatId) return res.sendStatus(200);
 
     const associatedUser = await findUserByChatId(chatId);
-    const locale = getUserLocale(associatedUser);
+    const telegramLanguageCode = msg.from?.language_code || null;
+    const locale = getUserLocale(associatedUser, telegramLanguageCode);
     const text = (msg.text || "").trim();
 
     // /start
