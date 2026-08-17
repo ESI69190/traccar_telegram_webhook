@@ -43,7 +43,7 @@ Provides secure user association, per-user device access via device attributes, 
 
 ### Internationalization
 - Locale priority: Telegram user locale → Traccar user attributes (`attributes.locale` or `attributes.language`) → fallback to English
-- Supported locales: **en, fr, es, pt, tr, ru** (with regional variants like en-US, fr-FR, es-ES, pt-BR, tr-TR, ru-RU)
+- Supported locales: **en, fr, es, pt, tr, ru, zh, ja, de, ko, it** (with regional variants like en-US, fr-FR, es-ES, pt-BR, tr-TR, ru-RU, zh-CN, zh-Hans, ja-JP, de-DE, ko-KR, it-IT)
 - Telegram command menu localized for all supported languages
 - Date formatting uses locale-appropriate Intl locale
 

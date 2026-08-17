@@ -94,6 +94,66 @@ const COMMAND_DESCRIPTIONS = {
     orders: "Управлять заказами",
     positions: "Список последних позиций",
     reports: "Сгенерировать отчет"
+  },
+  zh: {
+    start: "启动机器人并显示可用命令",
+    assoc: "安全连接您的 Traccar 账户",
+    track: "追踪设备位置和状态",
+    history: "显示设备位置历史",
+    status: "显示设备摘要",
+    engine: "发送引擎开/关命令",
+    commands: "发送自定义命令",
+    orders: "管理订单",
+    positions: "列出最近位置",
+    reports: "生成报告"
+  },
+  ja: {
+    start: "ボットを起動して利用可能なコマンドを表示",
+    assoc: "Traccar アカウントを安全に接続",
+    track: "デバイスの位置とステータスを追跡",
+    history: "デバイスの位置履歴を表示",
+    status: "デバイスの概要を表示",
+    engine: "エンジン オン/オフ コマンドを送信",
+    commands: "カスタム コマンドを送信",
+    orders: "注文を管理",
+    positions: "最近の位置情報を一覧表示",
+    reports: "レポートを生成"
+  },
+  de: {
+    start: "Bot starten und verfügbare Befehle anzeigen",
+    assoc: "Traccar-Konto sicher verbinden",
+    track: "Gerätestandort und -status verfolgen",
+    history: "Gerätepositionsverlauf anzeigen",
+    status: "Gerätezusammenfassung anzeigen",
+    engine: "Motor-Befehl senden",
+    commands: "Benutzerdefinierten Befehl senden",
+    orders: "Aufträge verwalten",
+    positions: "Letzte Positionen auflisten",
+    reports: "Bericht erstellen"
+  },
+  ko: {
+    start: "봇 시작 및 사용 가능한 명령어 표시",
+    assoc: "Traccar 계정 안전하게 연결",
+    track: "기기 위치 및 상태 추적",
+    history: "기기 위치 기록 표시",
+    status: "기기 요약 표시",
+    engine: "엔진 켜기/끄기 명령 전송",
+    commands: "사용자 정의 명령 전송",
+    orders: "주문 관리",
+    positions: "최근 위치 목록 보기",
+    reports: "보고서 생성"
+  },
+  it: {
+    start: "Avvia il bot e mostra i comandi disponibili",
+    assoc: "Collega in modo sicuro il tuo account Traccar",
+    track: "Traccia posizione e stato del dispositivo",
+    history: "Mostra cronologia posizioni dispositivo",
+    status: "Mostra riepilogo dispositivo",
+    engine: "Invia comando motore on/off",
+    commands: "Invia comando personalizzato",
+    orders: "Gestisci ordini",
+    positions: "Elenca posizioni recenti",
+    reports: "Genera report"
   }
 };
 
