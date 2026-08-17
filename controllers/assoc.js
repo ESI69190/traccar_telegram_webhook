@@ -24,6 +24,17 @@ function getWebAppUrl() {
   return process.env.TELEGRAM_ASSOC_WEBAPP_URL || null;
 }
 
+function buildLocalizedWebAppUrl(webAppUrl, locale) {
+  try {
+    const url = new URL(webAppUrl);
+    url.searchParams.set("lang", locale || "en");
+    return url.toString();
+  } catch (e) {
+    // If URL parsing fails, return original URL (should not happen with valid config)
+    return webAppUrl;
+  }
+}
+
 const pendingChats = new Map();
 const PENDING_TTL = 10 * 60 * 1000;
 
@@ -59,9 +70,10 @@ async function verifyUserPassword(email, password) {
 }
 
 async function sendMiniAppPrompt(chatId, locale, webAppUrl) {
+  const localizedWebAppUrl = buildLocalizedWebAppUrl(webAppUrl, locale);
   const keyboard = {
     inline_keyboard: [[
-      { text: t(locale, "miniapp_button_open"), web_app: { url: webAppUrl } }
+      { text: t(locale, "miniapp_button_open"), web_app: { url: localizedWebAppUrl } }
     ]]
   };
   await sendPlainText(chatId, t(locale, "miniapp_open_prompt"), {
