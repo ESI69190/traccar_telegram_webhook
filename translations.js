@@ -3,10 +3,9 @@ export const TRANSLATIONS = {
   en: {
     start_intro: "Available commands:",
     start_assoc_prompt:
-      "You are not associated with a Traccar account. Use /assoc to link your phone and Telegram chat.",
+      "You are not associated with a Traccar account. Use /assoc to securely connect your Traccar account.",
     start_commands:
-      "/assoc - associate phone and Telegram chat_id (secure confirmation required)\n" +
-      "/assoc telegram - show contact share button\n" +
+      "/assoc - securely connect your Traccar account\n" +
       "/track - list devices in your group\n" +
       "/track <id> - show device location and status\n" +
       "/history <id> [n] - last n positions\n" +
@@ -59,15 +58,25 @@ export const TRANSLATIONS = {
     order_failed: "Failed to process order.",
     positions_usage: "Usage: /positions <id> [limit]",
     positions_for: "Positions for",
-    reports_usage: "Usage: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops"
+    reports_usage: "Usage: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops",
+    miniapp_assoc_success: "Your Traccar account has been successfully associated with Telegram.",
+    miniapp_assoc_title: "Connect your Traccar account",
+    miniapp_field_email_phone: "Email or phone",
+    miniapp_field_password: "Password",
+    miniapp_button_submit: "Connect account",
+    miniapp_error_invalid_request: "Invalid request",
+    miniapp_error_expired_session: "Expired Telegram session. Please reopen the Mini App.",
+    miniapp_error_auth_failed: "Authentication failed. Check your credentials.",
+    miniapp_error_already_associated: "This account is already associated with another Telegram user.",
+    miniapp_error_config: "Configuration error. Please contact administrator.",
+    miniapp_error_rate_limit: "Too many attempts. Please try again later."
   },
   fr: {
     start_intro: "Commandes disponibles :",
     start_assoc_prompt:
-      "Vous n'êtes pas associé à un compte Traccar. Utilisez /assoc pour lier votre téléphone et Telegram.",
+      "Vous n'êtes pas associé à un compte Traccar. Utilisez /assoc pour connecter votre compte Traccar de manière sécurisée.",
     start_commands:
-      "/assoc - associer numéro et chat Telegram (confirmation sécurisée requise)\n" +
-      "/assoc telegram - afficher le bouton de partage de contact\n" +
+      "/assoc - connecter votre compte Traccar de manière sécurisée\n" +
       "/track - lister les équipements du groupe\n" +
       "/track <id> - afficher la position et l'état d'un équipement\n" +
       "/history <id> [n] - dernières positions\n" +
@@ -122,7 +131,18 @@ export const TRANSLATIONS = {
     order_failed: "Échec du traitement de la commande.",
     positions_usage: "Usage : /positions <id> [limite]",
     positions_for: "Positions pour",
-    reports_usage: "Usage : /reports <type> <id> [jours]\nTypes: route, events, geofences, summary, trips, stops"
+    reports_usage: "Usage : /reports <type> <id> [jours]\nTypes: route, events, geofences, summary, trips, stops",
+    miniapp_assoc_success: "Votre compte Traccar a été associé avec succès à Telegram.",
+    miniapp_assoc_title: "Connectez votre compte Traccar",
+    miniapp_field_email_phone: "Email ou téléphone",
+    miniapp_field_password: "Mot de passe",
+    miniapp_button_submit: "Connecter le compte",
+    miniapp_error_invalid_request: "Requête invalide",
+    miniapp_error_expired_session: "Session Telegram expirée. Veuillez rouvrir la Mini App.",
+    miniapp_error_auth_failed: "Échec de l'authentification. Vérifiez vos identifiants.",
+    miniapp_error_already_associated: "Ce compte est déjà associé à un autre utilisateur Telegram.",
+    miniapp_error_config: "Erreur de configuration. Contactez l'administrateur.",
+    miniapp_error_rate_limit: "Trop de tentatives. Réessayez plus tard."
   },
   es: {
     start_intro: "Comandos disponibles:",
@@ -183,7 +203,18 @@ export const TRANSLATIONS = {
     order_failed: "Falló el procesamiento de la orden.",
     positions_usage: "Uso: /positions <id> [limit]",
     positions_for: "Posiciones para",
-    reports_usage: "Uso: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops"
+    reports_usage: "Uso: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops",
+    miniapp_assoc_success: "Tu cuenta de Traccar se ha asociado correctamente con Telegram.",
+    miniapp_assoc_title: "Conecta tu cuenta de Traccar",
+    miniapp_field_email_phone: "Email o teléfono",
+    miniapp_field_password: "Contraseña",
+    miniapp_button_submit: "Conectar cuenta",
+    miniapp_error_invalid_request: "Solicitud inválida",
+    miniapp_error_expired_session: "Sesión de Telegram expirada. Vuelve a abrir la Mini App.",
+    miniapp_error_auth_failed: "Error de autenticación. Verifica tus credenciales.",
+    miniapp_error_already_associated: "Esta cuenta ya está asociada a otro usuario de Telegram.",
+    miniapp_error_config: "Error de configuración. Contacta al administrador.",
+    miniapp_error_rate_limit: "Demasiados intentos. Inténtalo de nuevo más tarde."
   },
   pt: {
     start_intro: "Comandos disponíveis:",
@@ -244,7 +275,18 @@ export const TRANSLATIONS = {
     order_failed: "Falha ao processar ordem.",
     positions_usage: "Uso: /positions <id> [limit]",
     positions_for: "Posições para",
-    reports_usage: "Uso: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops"
+    reports_usage: "Uso: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops",
+    miniapp_assoc_success: "Sua conta do Traccar foi associada com sucesso ao Telegram.",
+    miniapp_assoc_title: "Conecte sua conta do Traccar",
+    miniapp_field_email_phone: "Email ou telefone",
+    miniapp_field_password: "Senha",
+    miniapp_button_submit: "Conectar conta",
+    miniapp_error_invalid_request: "Solicitação inválida",
+    miniapp_error_expired_session: "Sessão do Telegram expirada. Reabra a Mini App.",
+    miniapp_error_auth_failed: "Falha na autenticação. Verifique suas credenciais.",
+    miniapp_error_already_associated: "Esta conta já está associada a outro usuário do Telegram.",
+    miniapp_error_config: "Erro de configuração. Contate o administrador.",
+    miniapp_error_rate_limit: "Muitas tentativas. Tente novamente mais tarde."
   },
   tr: {
     start_intro: "Kullanılabilir komutlar:",
@@ -305,7 +347,18 @@ export const TRANSLATIONS = {
     order_failed: "Sipariş işlenemedi.",
     positions_usage: "Kullanım: /positions <id> [limit]",
     positions_for: "Pozisyonlar: ",
-    reports_usage: "Kullanım: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops"
+    reports_usage: "Kullanım: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops",
+    miniapp_assoc_success: "Traccar hesabınız Telegram ile başarıyla ilişkilendirildi.",
+    miniapp_assoc_title: "Traccar hesabınızı bağlayın",
+    miniapp_field_email_phone: "E-posta veya telefon",
+    miniapp_field_password: "Şifre",
+    miniapp_button_submit: "Hesabı bağla",
+    miniapp_error_invalid_request: "Geçersiz istek",
+    miniapp_error_expired_session: "Telegram oturumu süresi doldu. Mini App'i yeniden açın.",
+    miniapp_error_auth_failed: "Kimlik doğrulama başarısız. Bilgilerinizi kontrol edin.",
+    miniapp_error_already_associated: "Bu hesap zaten başka bir Telegram kullanıcısıyla ilişkilendirilmiş.",
+    miniapp_error_config: "Yapılandırma hatası. Yöneticiye başvurun.",
+    miniapp_error_rate_limit: "Çok fazla deneme. Lütfen daha sonra tekrar deneyin."
   },
   ru: {
     start_intro: "Доступные команды:",
@@ -366,6 +419,17 @@ export const TRANSLATIONS = {
     order_failed: "Не удалось обработать заказ.",
     positions_usage: "Использование: /positions <id> [limit]",
     positions_for: "Позиции для",
-    reports_usage: "Использование: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops"
+    reports_usage: "Использование: /reports <type> <id> [days]\nTypes: route, events, geofences, summary, trips, stops",
+    miniapp_assoc_success: "Ваш аккаунт Traccar успешно связан с Telegram.",
+    miniapp_assoc_title: "Подключите ваш аккаунт Traccar",
+    miniapp_field_email_phone: "Email или телефон",
+    miniapp_field_password: "Пароль",
+    miniapp_button_submit: "Подключить аккаунт",
+    miniapp_error_invalid_request: "Неверный запрос",
+    miniapp_error_expired_session: "Сессия Telegram истекла. Пожалуйста, откройте Mini App снова.",
+    miniapp_error_auth_failed: "Ошибка аутентификации. Проверьте ваши учетные данные.",
+    miniapp_error_already_associated: "Этот аккаунт уже связан с другим пользователем Telegram.",
+    miniapp_error_config: "Ошибка конфигурации. Обратитесь к администратору.",
+    miniapp_error_rate_limit: "Слишком много попыток. Попробуйте позже."
   }
 };

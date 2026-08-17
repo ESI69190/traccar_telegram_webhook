@@ -39,7 +39,7 @@ export async function handleStatus(chatId, text, locale) {
   const positions = await getLastPositions(device.id, from, to);
   const pos = positions[0];
 
-  let out = "*Status* " + escapeMarkdown(device.name || device.uniqueId) + ":\n";
+  let out = escapeMarkdown("*Status* ") + escapeMarkdown(device.name || device.uniqueId) + escapeMarkdown(":\n");
   if (pos) {
     const time =
       pos.serverTime || pos.fixTime || pos.time || pos.deviceTime || null;
@@ -53,13 +53,13 @@ export async function handleStatus(chatId, text, locale) {
     const moving =
       (speed && Number(speed) > 0) || ignition ? "Moving" : "Stopped";
 
-    if (time) out += "- Last update: " + escapeMarkdown(formatDate(time)) + "\n";
-    out += "- State: " + escapeMarkdown(moving) + "\n";
+    if (time) out += escapeMarkdown("- Last update: ") + escapeMarkdown(formatDate(time)) + "\n";
+    out += escapeMarkdown("- State: ") + escapeMarkdown(moving) + "\n";
     if (typeof speed !== "undefined" && speed !== null)
-      out += "- Speed: " + escapeMarkdown(String(speed)) + " km/h\n";
-    if (attrs.battery) out += "- Battery: " + escapeMarkdown(String(attrs.battery)) + "\n";
+      out += escapeMarkdown("- Speed: ") + escapeMarkdown(String(speed)) + " km/h\n";
+    if (attrs.battery) out += escapeMarkdown("- Battery: ") + escapeMarkdown(String(attrs.battery)) + "\n";
   } else {
-    out += t(locale, "no_positions") + "\n";
+    out += escapeMarkdown(t(locale, "no_positions")) + "\n";
   }
 
   await telegramSendMessage(chatId, out);

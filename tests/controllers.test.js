@@ -6,6 +6,7 @@ import { setupTraccarNock, setupTelegramNock, cleanAll } from "./helpers/nock-he
 import { handleTrack } from "../controllers/track.js";
 import { handleHistory } from "../controllers/history.js";
 import { handlePositions } from "../controllers/positions.js";
+import { handleStatus } from "../controllers/status.js";
 import handleOrders from "../controllers/orders.js";
 import { handleAssoc } from "../controllers/assoc.js";
 import { handleReports } from "../controllers/reports.js";
@@ -194,6 +195,320 @@ test("handlePositions caps limit at MAX_LIMIT", async () => {
     traccar.isDone(),
     `Expected positions mock to be consumed. Pending: ${traccar.pendingMocks()}`
   );
+});
+
+test("handleTrack escapes MarkdownV2 hash and hyphens in static template", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  traccar
+    .get("/api/devices")
+    .query({ userId: "1" })
+    .reply(200, [
+      {
+        id: 1,
+        name: "Test#Device",
+        uniqueId: "UID1",
+        attributes: {
+          plate: "AB-123-CD"
+        }
+      }
+    ])
+    .persist();
+  traccar
+    .get("/api/positions")
+    .query((query) => String(query.deviceId) === "1" && query.from && query.to)
+    .reply(200, [
+      {
+        latitude: -33.8688,
+        longitude: 151.2093,
+        speed: 50,
+        serverTime: "2024-01-01T00:00:00Z",
+        attributes: { ignition: true, battery: 85 }
+      }
+    ]);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleTrack("123", "/track Test#Device", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected all Traccar mocks to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  // Verify # is escaped in static template (not in dynamic value)
+  assert.ok(capturedText.includes("\\#"), "Hash in static template should be escaped");
+  // Verify leading hyphens are escaped
+  assert.ok(capturedText.includes("\\- Date:"), "Leading hyphen in Date should be escaped");
+  assert.ok(capturedText.includes("\\- Coordinates:"), "Leading hyphen in Coordinates should be escaped");
+  assert.ok(capturedText.includes("\\- Speed:"), "Leading hyphen in Speed should be escaped");
+  assert.ok(capturedText.includes("\\- State:"), "Leading hyphen in State should be escaped");
+  assert.ok(capturedText.includes("\\- Battery:"), "Leading hyphen in Battery should be escaped");
+  // Verify dynamic value with # is escaped
+  assert.ok(capturedText.includes("Test\\#Device"), "Dynamic value with # should be escaped");
+  // Verify Google Maps link with negative coordinates works
+  assert.ok(capturedText.includes("https://www.google.com/maps/search/?api=1&query="), "Google Maps link should be present");
+  assert.ok(capturedText.includes("-33\\.8688,151\\.2093"), "Negative coordinates should be escaped in link label");
+});
+
+test("handleHistory escapes MarkdownV2 hash and hyphens", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  mockDevicesForUser(traccar, 1);
+  traccar
+    .get("/api/positions")
+    .query((query) => String(query.deviceId) === "1" && query.from && query.to)
+    .reply(200, [
+      {
+        latitude: 45.6997,
+        longitude: 4.8631,
+        serverTime: "2024-01-01T00:00:00Z"
+      },
+      {
+        latitude: -33.8688,
+        longitude: -151.2093,
+        serverTime: "2024-01-02T00:00:00Z"
+      }
+    ]);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleHistory("123", "/history car1 2", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected positions mock to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  // Verify # is escaped in position numbering
+  assert.ok(capturedText.includes("\\#1"), "Position number #1 should be escaped");
+  assert.ok(capturedText.includes("\\#2"), "Position number #2 should be escaped");
+  // Verify leading hyphens are escaped
+  assert.ok(capturedText.includes("\\- Date:"), "Leading hyphen in Date should be escaped");
+  assert.ok(capturedText.includes("\\- Coordinates:"), "Leading hyphen in Coordinates should be escaped");
+  // Verify Google Maps links with negative coordinates
+  assert.ok(capturedText.includes("45\\.6997,4\\.8631"), "Positive coordinates should be escaped in link label");
+  assert.ok(capturedText.includes("\\-33\\.8688,\\-151\\.2093"), "Negative coordinates should be escaped in link label");
+});
+
+test("handleStatus escapes MarkdownV2 hyphens in static template", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  mockDevicesForUser(traccar, 1);
+  traccar
+    .get("/api/positions")
+    .query((query) => String(query.deviceId) === "1" && query.from && query.to)
+    .reply(200, [
+      {
+        latitude: 33.8688,
+        longitude: -151.2093,
+        speed: 60,
+        serverTime: "2024-01-01T00:00:00Z",
+        attributes: { ignition: true, battery: 90 }
+      }
+    ]);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleStatus("123", "/status car1", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected positions mock to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  // Verify leading hyphens are escaped
+  assert.ok(capturedText.includes("\\- Last update:"), "Leading hyphen in Last update should be escaped");
+  assert.ok(capturedText.includes("\\- State:"), "Leading hyphen in State should be escaped");
+  assert.ok(capturedText.includes("\\- Speed:"), "Leading hyphen in Speed should be escaped");
+  assert.ok(capturedText.includes("\\- Battery:"), "Leading hyphen in Battery should be escaped");
+});
+
+test("handlePositions escapes MarkdownV2 hash and hyphens", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  mockDevicesForUser(traccar, 1);
+  traccar
+    .get("/api/positions")
+    .query((query) => String(query.deviceId) === "1" && query.from && query.to)
+    .reply(200, [
+      {
+        latitude: -33.8688,
+        longitude: 151.2093,
+        speed: 45,
+        serverTime: "2024-01-01T00:00:00Z"
+      }
+    ]);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handlePositions("123", "/positions car1 1", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected positions mock to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  // Verify # is escaped in position numbering
+  assert.ok(capturedText.includes("\\#1"), "Position number #1 should be escaped");
+  // Verify leading hyphens are escaped
+  assert.ok(capturedText.includes("\\- Date:"), "Leading hyphen in Date should be escaped");
+  assert.ok(capturedText.includes("\\- Coordinates:"), "Leading hyphen in Coordinates should be escaped");
+  assert.ok(capturedText.includes("\\- Speed:"), "Leading hyphen in Speed should be escaped");
+  // Verify Google Maps link with negative coordinates
+  assert.ok(capturedText.includes("-33\\.8688,151\\.2093"), "Negative coordinates should be escaped in link label");
+});
+
+test("handleReports escapes MarkdownV2 hash and hyphens", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  mockDevicesForUser(traccar, 1);
+  traccar
+    .get("/api/reports/route")
+    .query((query) =>
+      String(query.deviceId) === "1" &&
+      query.from &&
+      query.to
+    )
+    .reply(200, [
+      { latitude: 45.6997, longitude: 4.8631, speed: 50 },
+      { latitude: -33.8688, longitude: -151.2093, speed: 60 }
+    ]);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleReports("123", "/reports route car1 1", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected reports/route mock to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  // Verify # is escaped in row numbering
+  assert.ok(capturedText.includes("\\#1"), "Row number #1 should be escaped");
+  assert.ok(capturedText.includes("\\#2"), "Row number #2 should be escaped");
+  // Verify leading hyphens are escaped
+  assert.ok(capturedText.includes("\\- latitude:"), "Leading hyphen in latitude should be escaped");
+  assert.ok(capturedText.includes("\\- longitude:"), "Leading hyphen in longitude should be escaped");
+  assert.ok(capturedText.includes("\\- speed:"), "Leading hyphen in speed should be escaped");
+});
+
+test("handleOrders get escapes MarkdownV2 hash and hyphens", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  traccar
+    .get("/api/orders")
+    .query({ userId: "1" })
+    .reply(200, [
+      { id: 1, uniqueId: "ORD#1", description: "Test order", fromAddress: "A", toAddress: "B" }
+    ]);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleOrders("123", "/orders get", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected orders mock to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  // Verify # is escaped in order numbering
+  assert.ok(capturedText.includes("\\#1"), "Order number #1 should be escaped");
+  // Verify leading hyphens are escaped
+  assert.ok(capturedText.includes("\\- ID:"), "Leading hyphen in ID should be escaped");
+  assert.ok(capturedText.includes("\\- Unique ID:"), "Leading hyphen in Unique ID should be escaped");
+  assert.ok(capturedText.includes("\\- Description:"), "Leading hyphen in Description should be escaped");
+  assert.ok(capturedText.includes("\\- From:"), "Leading hyphen in From should be escaped");
+  assert.ok(capturedText.includes("\\- To:"), "Leading hyphen in To should be escaped");
+  // Verify dynamic value with # is escaped
+  assert.ok(capturedText.includes("ORD\\#1"), "Dynamic value with # should be escaped");
+});
+
+test("handleTrack handles special characters in dynamic device name", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  traccar
+    .get("/api/devices")
+    .query({ userId: "1" })
+    .reply(200, [
+      {
+        id: 1,
+        name: "Device-Test#1",
+        uniqueId: "UID1",
+        attributes: {
+          note: "John's (GPS) [Test] A+B=C!"
+        }
+      }
+    ])
+    .persist();
+  traccar
+    .get("/api/positions")
+    .query((query) => String(query.deviceId) === "1" && query.from && query.to)
+    .reply(200, [
+      {
+        latitude: 48.8,
+        longitude: 2.3,
+        speed: 50,
+        serverTime: "2024-01-01T00:00:00Z",
+        attributes: { ignition: true, battery: 85 }
+      }
+    ]);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleTrack("123", "/track Device-Test#1", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected all Traccar mocks to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  // Verify all special characters in dynamic device name are escaped
+  assert.ok(capturedText.includes("Device\\-Test\\#1"), "Special chars in device name should be escaped");
+  // Verify attribute value special chars are escaped (apostrophe is NOT a MarkdownV2 reserved char)
+  assert.ok(capturedText.includes("John's \\(GPS\\) \\[Test\\] A\\+B\\=C\\!"), "Special chars in attribute should be escaped");
 });
 
 test("handleOrders rejects path traversal in update ID", async () => {

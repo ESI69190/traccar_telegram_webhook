@@ -14,6 +14,19 @@ function validateAssocSecret(secret) {
   return { ok: true };
 }
 
+function validateWebAppUrl(url) {
+  if (!url) return { ok: false, reason: "missing" };
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && process.env.NODE_ENV === "production") {
+      return { ok: false, reason: "must_be_https_in_production" };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "invalid_url" };
+  }
+}
+
 export function checkEnv() {
   const missing = [];
 
@@ -54,6 +67,17 @@ export function checkEnv() {
       console.error(`SECURITY ERROR: ${msg}. Association disabled in production.`);
     } else {
       console.warn(`WARNING: ${msg}. Association will not work securely.`);
+    }
+  }
+
+  // Validate Mini App Web App URL
+  const webAppUrlValidation = validateWebAppUrl(process.env.TELEGRAM_ASSOC_WEBAPP_URL);
+  if (!webAppUrlValidation.ok) {
+    const msg = `TELEGRAM_ASSOC_WEBAPP_URL ${webAppUrlValidation.reason}`;
+    if (process.env.NODE_ENV === "production") {
+      console.error(`SECURITY ERROR: ${msg}. Mini App association disabled in production.`);
+    } else {
+      console.warn(`WARNING: ${msg}. Mini App association will not work.`);
     }
   }
 }
