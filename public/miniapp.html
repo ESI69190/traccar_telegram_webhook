@@ -260,7 +260,9 @@
 
       // Get translations from URL params or use defaults
       const urlParams = new URLSearchParams(window.location.search);
-      const lang = urlParams.get('lang') || 'en';
+      const rawLang = urlParams.get('lang') || 'en';
+      // Normalize locale: extract base language code (e.g., de-DE -> de, zh-CN -> zh)
+      const lang = rawLang.toLowerCase().split(/[-_]/)[0];
 
       const translations = {
         en: {
@@ -358,6 +360,86 @@
           errorConfig: 'Ошибка конфигурации. Обратитесь к администратору.',
           errorRateLimit: 'Слишком много попыток. Попробуйте позже.',
           errorNetwork: 'Ошибка сети. Попробуйте снова.'
+        },
+        zh: {
+          title: '连接您的 Traccar 账户',
+          identifierLabel: '电子邮件或电话',
+          identifierPlaceholder: 'you@example.com 或 +8613812345678',
+          passwordLabel: '密码',
+          passwordPlaceholder: '您的 Traccar 密码',
+          submitBtn: '连接账户',
+          loadingText: '连接中...',
+          errorInvalidRequest: '无效请求',
+          errorExpiredSession: 'Telegram 会话已过期。请重新打开 Mini App。',
+          errorAuthFailed: '认证失败。请检查您的凭据。',
+          errorAlreadyAssociated: '该账户已与另一 Telegram 用户关联。',
+          errorConfig: '配置错误。请联系管理员。',
+          errorRateLimit: '尝试次数过多。请稍后再试。',
+          errorNetwork: '网络错误。请重试。'
+        },
+        ja: {
+          title: 'Traccar アカウントを接続',
+          identifierLabel: 'メールアドレスまたは電話番号',
+          identifierPlaceholder: 'you@example.com または +819012345678',
+          passwordLabel: 'パスワード',
+          passwordPlaceholder: 'Traccar のパスワード',
+          submitBtn: 'アカウントを接続',
+          loadingText: '接続中...',
+          errorInvalidRequest: '無効なリクエスト',
+          errorExpiredSession: 'Telegram セッションが期限切れです。Mini App を再度開いてください。',
+          errorAuthFailed: '認証に失敗しました。認証情報を確認してください。',
+          errorAlreadyAssociated: 'このアカウントは別の Telegram ユーザーと既に関連付けられています。',
+          errorConfig: '設定エラーです。管理者にお問い合わせください。',
+          errorRateLimit: '試行回数が多すぎます。後でもう一度お試しください。',
+          errorNetwork: 'ネットワーク エラー。再試行してください。'
+        },
+        de: {
+          title: 'Traccar-Konto verbinden',
+          identifierLabel: 'E-Mail oder Telefon',
+          identifierPlaceholder: 'you@example.com oder +491712345678',
+          passwordLabel: 'Passwort',
+          passwordPlaceholder: 'Ihr Traccar-Passwort',
+          submitBtn: 'Konto verbinden',
+          loadingText: 'Verbinde...',
+          errorInvalidRequest: 'Ungültige Anfrage',
+          errorExpiredSession: 'Telegram-Sitzung abgelaufen. Bitte Mini App erneut öffnen.',
+          errorAuthFailed: 'Authentifizierung fehlgeschlagen. Prüfen Sie Ihre Anmeldedaten.',
+          errorAlreadyAssociated: 'Dieses Konto ist bereits mit einem anderen Telegram-Benutzer verknüpft.',
+          errorConfig: 'Konfigurationsfehler. Bitte Administrator kontaktieren.',
+          errorRateLimit: 'Zu viele Versuche. Bitte später erneut versuchen.',
+          errorNetwork: 'Netzwerkfehler. Bitte erneut versuchen.'
+        },
+        ko: {
+          title: 'Traccar 계정 연결',
+          identifierLabel: '이메일 또는 전화번호',
+          identifierPlaceholder: 'you@example.com 또는 +821012345678',
+          passwordLabel: '비밀번호',
+          passwordPlaceholder: 'Traccar 비밀번호',
+          submitBtn: '계정 연결',
+          loadingText: '연결 중...',
+          errorInvalidRequest: '잘못된 요청',
+          errorExpiredSession: 'Telegram 세션이 만료되었습니다. Mini App을 다시 여세요.',
+          errorAuthFailed: '인증 실패. 자격 증명을 확인하세요.',
+          errorAlreadyAssociated: '이 계정은 이미 다른 Telegram 사용자와 연결되어 있습니다.',
+          errorConfig: '설정 오류. 관리자에게 문의하세요.',
+          errorRateLimit: '시도 횟수가 너무 많습니다. 나중에 다시 시도하세요.',
+          errorNetwork: '네트워크 오류. 다시 시도하세요.'
+        },
+        it: {
+          title: 'Collega il tuo account Traccar',
+          identifierLabel: 'Email o telefono',
+          identifierPlaceholder: 'you@example.com o +393XX1234567',
+          passwordLabel: 'Password',
+          passwordPlaceholder: 'La tua password Traccar',
+          submitBtn: 'Collega account',
+          loadingText: 'Connessione...',
+          errorInvalidRequest: 'Richiesta non valida',
+          errorExpiredSession: 'Sessione Telegram scaduta. Riapri la Mini App.',
+          errorAuthFailed: 'Autenticazione fallita. Verifica le tue credenziali.',
+          errorAlreadyAssociated: 'Questo account è già associato a un altro utente Telegram.',
+          errorConfig: 'Errore di configurazione. Contatta l\'amministratore.',
+          errorRateLimit: 'Troppi tentativi. Riprova più tardi.',
+          errorNetwork: 'Errore di rete. Riprova.'
         }
       };
 

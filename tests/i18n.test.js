@@ -70,8 +70,8 @@ test("normalizeLocale handles case variations", async () => {
 });
 
 test("normalizeLocale falls back to English for unknown locale", async () => {
-  assert.strictEqual(normalizeLocale("de"), "en");
-  assert.strictEqual(normalizeLocale("zh"), "en");
+  assert.strictEqual(normalizeLocale("nl"), "en");
+  assert.strictEqual(normalizeLocale("xx"), "en");
 });
 
 test("t() translates using correct locale", async () => {
@@ -81,7 +81,7 @@ test("t() translates using correct locale", async () => {
 });
 
 test("t() falls back to English for unknown locale", async () => {
-  const result = t("de", "start_intro");
+  const result = t("nl", "start_intro");
   assert.strictEqual(result, "Available commands:");
 });
 
@@ -126,14 +126,14 @@ test("getUserLocale: supported Telegram overrides Traccar locale", async () => {
 
 test("getUserLocale: unsupported Telegram falls back to Traccar attributes.locale", async () => {
   const user = { attributes: { locale: "fr-FR" } };
-  const locale = getUserLocale(user, "de");
-  assert.strictEqual(locale, "fr", "Unsupported Telegram de should fall back to Traccar fr");
+  const locale = getUserLocale(user, "nl");
+  assert.strictEqual(locale, "fr", "Unsupported Telegram nl should fall back to Traccar fr");
 });
 
 test("getUserLocale: unsupported Telegram + unsupported attributes.locale falls back to attributes.language", async () => {
   const user = { attributes: { locale: "xx", language: "tr" } };
-  const locale = getUserLocale(user, "de");
-  assert.strictEqual(locale, "tr", "Unsupported Telegram de + unsupported xx should fall back to tr");
+  const locale = getUserLocale(user, "nl");
+  assert.strictEqual(locale, "tr", "Unsupported Telegram nl + unsupported xx should fall back to tr");
 });
 
 test("getUserLocale: attributes.locale takes priority over attributes.language", async () => {
@@ -155,8 +155,8 @@ test("getUserLocale: user.language fallback when no attributes", async () => {
 });
 
 test("getUserLocale: everything unsupported falls back to English", async () => {
-  const user = { attributes: { locale: "zh", language: "it" }, language: "nl" };
-  const locale = getUserLocale(user, "de");
+  const user = { attributes: { locale: "xx", language: "yy" }, language: "zz" };
+  const locale = getUserLocale(user, "nl");
   assert.strictEqual(locale, "en", "All unsupported should fall back to English");
 });
 
@@ -166,12 +166,182 @@ test("getUserLocale: pre-association with supported Telegram locale", async () =
 });
 
 test("getUserLocale: pre-association with unsupported Telegram locale", async () => {
-  const locale = getUserLocale(null, "de");
-  assert.strictEqual(locale, "en", "Pre-association with unsupported de should fall back to English");
+  const locale = getUserLocale(null, "nl");
+  assert.strictEqual(locale, "en", "Pre-association with unsupported nl should fall back to English");
 });
 
 test("getUserLocale: empty Telegram locale falls back to Traccar", async () => {
   const user = { attributes: { locale: "es-ES" } };
   const locale = getUserLocale(user, "");
   assert.strictEqual(locale, "es", "Empty Telegram locale should fall back to Traccar es");
+});
+
+// --- New locale normalization tests ---
+
+test("normalizeLocale: German regional variants", async () => {
+  assert.strictEqual(normalizeLocale("de-DE"), "de");
+  assert.strictEqual(normalizeLocale("de_AT"), "de");
+  assert.strictEqual(normalizeLocale("de-CH"), "de");
+});
+
+test("normalizeLocale: Italian regional variants", async () => {
+  assert.strictEqual(normalizeLocale("it-IT"), "it");
+});
+
+test("normalizeLocale: Japanese regional variants", async () => {
+  assert.strictEqual(normalizeLocale("ja-JP"), "ja");
+});
+
+test("normalizeLocale: Korean regional variants", async () => {
+  assert.strictEqual(normalizeLocale("ko-KR"), "ko");
+});
+
+test("normalizeLocale: Chinese regional variants", async () => {
+  assert.strictEqual(normalizeLocale("zh-CN"), "zh");
+  assert.strictEqual(normalizeLocale("zh-SG"), "zh");
+  assert.strictEqual(normalizeLocale("zh-Hans"), "zh");
+  assert.strictEqual(normalizeLocale("zh_Hans"), "zh");
+});
+
+// --- Telegram priority with new locales ---
+
+test("getUserLocale: Telegram de-DE overrides Traccar fr", async () => {
+  const user = { attributes: { locale: "fr-FR" } };
+  const locale = getUserLocale(user, "de-DE");
+  assert.strictEqual(locale, "de", "Telegram de-DE should override Traccar fr");
+});
+
+test("getUserLocale: Telegram ja-JP overrides Traccar en", async () => {
+  const user = { attributes: { locale: "en" } };
+  const locale = getUserLocale(user, "ja-JP");
+  assert.strictEqual(locale, "ja", "Telegram ja-JP should override Traccar en");
+});
+
+test("getUserLocale: Telegram ko-KR overrides Traccar fr", async () => {
+  const user = { attributes: { locale: "fr-FR" } };
+  const locale = getUserLocale(user, "ko-KR");
+  assert.strictEqual(locale, "ko", "Telegram ko-KR should override Traccar fr");
+});
+
+test("getUserLocale: Telegram it-IT overrides Traccar es", async () => {
+  const user = { attributes: { locale: "es-ES" } };
+  const locale = getUserLocale(user, "it-IT");
+  assert.strictEqual(locale, "it", "Telegram it-IT should override Traccar es");
+});
+
+test("getUserLocale: Telegram zh-CN overrides Traccar en", async () => {
+  const user = { attributes: { locale: "en" } };
+  const locale = getUserLocale(user, "zh-CN");
+  assert.strictEqual(locale, "zh", "Telegram zh-CN should override Traccar en");
+});
+
+// --- Traccar fallback with new locales ---
+
+test("getUserLocale: unsupported Telegram falls back to Traccar de", async () => {
+  const user = { attributes: { locale: "de-DE" } };
+  const locale = getUserLocale(user, "nl");
+  assert.strictEqual(locale, "de", "Unsupported Telegram nl should fall back to Traccar de");
+});
+
+test("getUserLocale: unsupported Telegram falls back to Traccar ja", async () => {
+  const user = { attributes: { locale: "ja-JP" } };
+  const locale = getUserLocale(user, "nl");
+  assert.strictEqual(locale, "ja", "Unsupported Telegram nl should fall back to Traccar ja");
+});
+
+test("getUserLocale: unsupported Telegram falls back to Traccar ko", async () => {
+  const user = { attributes: { locale: "ko-KR" } };
+  const locale = getUserLocale(user, "nl");
+  assert.strictEqual(locale, "ko", "Unsupported Telegram nl should fall back to Traccar ko");
+});
+
+test("getUserLocale: unsupported Telegram falls back to Traccar it", async () => {
+  const user = { attributes: { locale: "it-IT" } };
+  const locale = getUserLocale(user, "nl");
+  assert.strictEqual(locale, "it", "Unsupported Telegram nl should fall back to Traccar it");
+});
+
+test("getUserLocale: unsupported Telegram falls back to Traccar zh", async () => {
+  const user = { attributes: { locale: "zh-CN" } };
+  const locale = getUserLocale(user, "nl");
+  assert.strictEqual(locale, "zh", "Unsupported Telegram nl should fall back to Traccar zh");
+});
+
+// --- Translation completeness tests ---
+
+test("translation keys: zh has all required keys", async () => {
+  const { TRANSLATIONS } = await import("../translations.js");
+  const enKeys = Object.keys(TRANSLATIONS.en).sort();
+  const zhKeys = Object.keys(TRANSLATIONS.zh).sort();
+  assert.deepStrictEqual(zhKeys, enKeys, "Chinese should have all translation keys");
+});
+
+test("translation keys: ja has all required keys", async () => {
+  const { TRANSLATIONS } = await import("../translations.js");
+  const enKeys = Object.keys(TRANSLATIONS.en).sort();
+  const jaKeys = Object.keys(TRANSLATIONS.ja).sort();
+  assert.deepStrictEqual(jaKeys, enKeys, "Japanese should have all translation keys");
+});
+
+test("translation keys: de has all required keys", async () => {
+  const { TRANSLATIONS } = await import("../translations.js");
+  const enKeys = Object.keys(TRANSLATIONS.en).sort();
+  const deKeys = Object.keys(TRANSLATIONS.de).sort();
+  assert.deepStrictEqual(deKeys, enKeys, "German should have all translation keys");
+});
+
+test("translation keys: ko has all required keys", async () => {
+  const { TRANSLATIONS } = await import("../translations.js");
+  const enKeys = Object.keys(TRANSLATIONS.en).sort();
+  const koKeys = Object.keys(TRANSLATIONS.ko).sort();
+  assert.deepStrictEqual(koKeys, enKeys, "Korean should have all translation keys");
+});
+
+test("translation keys: it has all required keys", async () => {
+  const { TRANSLATIONS } = await import("../translations.js");
+  const enKeys = Object.keys(TRANSLATIONS.en).sort();
+  const itKeys = Object.keys(TRANSLATIONS.it).sort();
+  assert.deepStrictEqual(itKeys, enKeys, "Italian should have all translation keys");
+});
+
+// --- Verify translations are not English placeholders ---
+
+test("translations: zh values differ from English", async () => {
+  const { TRANSLATIONS } = await import("../translations.js");
+  const sampleKeys = ["start_intro", "miniapp_assoc_title", "miniapp_button_submit"];
+  for (const key of sampleKeys) {
+    assert.notStrictEqual(TRANSLATIONS.zh[key], TRANSLATIONS.en[key], `Chinese ${key} should be translated`);
+  }
+});
+
+test("translations: ja values differ from English", async () => {
+  const { TRANSLATIONS } = await import("../translations.js");
+  const sampleKeys = ["start_intro", "miniapp_assoc_title", "miniapp_button_submit"];
+  for (const key of sampleKeys) {
+    assert.notStrictEqual(TRANSLATIONS.ja[key], TRANSLATIONS.en[key], `Japanese ${key} should be translated`);
+  }
+});
+
+test("translations: de values differ from English", async () => {
+  const { TRANSLATIONS } = await import("../translations.js");
+  const sampleKeys = ["start_intro", "miniapp_assoc_title", "miniapp_button_submit"];
+  for (const key of sampleKeys) {
+    assert.notStrictEqual(TRANSLATIONS.de[key], TRANSLATIONS.en[key], `German ${key} should be translated`);
+  }
+});
+
+test("translations: ko values differ from English", async () => {
+  const { TRANSLATIONS } = await import("../translations.js");
+  const sampleKeys = ["start_intro", "miniapp_assoc_title", "miniapp_button_submit"];
+  for (const key of sampleKeys) {
+    assert.notStrictEqual(TRANSLATIONS.ko[key], TRANSLATIONS.en[key], `Korean ${key} should be translated`);
+  }
+});
+
+test("translations: it values differ from English", async () => {
+  const { TRANSLATIONS } = await import("../translations.js");
+  const sampleKeys = ["start_intro", "miniapp_assoc_title", "miniapp_button_submit"];
+  for (const key of sampleKeys) {
+    assert.notStrictEqual(TRANSLATIONS.it[key], TRANSLATIONS.en[key], `Italian ${key} should be translated`);
+  }
 });

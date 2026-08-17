@@ -2,7 +2,7 @@
 import { TRANSLATIONS } from "../translations.js";
 
 // Supported locales (must match TRANSLATIONS keys)
-const SUPPORTED_LOCALES = new Set(["en", "fr", "es", "pt", "tr", "ru"]);
+const SUPPORTED_LOCALES = new Set(["en", "fr", "es", "pt", "tr", "ru", "zh", "ja", "de", "ko", "it"]);
 
 /**
  * Normalize a locale string to a supported base locale.
