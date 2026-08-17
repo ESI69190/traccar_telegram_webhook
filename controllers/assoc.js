@@ -58,6 +58,23 @@ async function verifyUserPassword(email, password) {
   }
 }
 
+async function sendMiniAppPrompt(chatId, locale, webAppUrl) {
+  const keyboard = {
+    inline_keyboard: [[
+      { text: t(locale, "miniapp_button_open"), web_app: { url: webAppUrl } }
+    ]]
+  };
+  await telegramSendMessage(chatId, t(locale, "miniapp_open_prompt"), {
+    reply_markup: keyboard,
+    parse_mode: "MarkdownV2"
+  });
+}
+
+async function sendConfigError(chatId, locale) {
+  console.error("TELEGRAM_ASSOC_WEBAPP_URL not configured for Mini App association");
+  await sendPlainText(chatId, t(locale, "miniapp_error_config"));
+}
+
 export async function handleAssoc(chatId, msg, locale) {
   const text = (msg.text || "").trim();
 
@@ -65,39 +82,21 @@ export async function handleAssoc(chatId, msg, locale) {
   const webAppUrl = getWebAppUrl();
   const hasWebApp = !!webAppUrl;
 
-  if (text.toLowerCase() === "/assoc telegram") {
-    pendingChats.set(chatId, {
-      createdAt: Date.now(),
-      awaitingEmail: false,
-      phoneCandidate: null,
-      awaitingAssocConfirm: false
-    });
+  // Check for Mini App association commands: "/assoc" or "/assoc telegram"
+  const lowerText = text.toLowerCase();
+  const isMiniAppAssoc = lowerText === "/assoc" || lowerText === "/assoc telegram";
 
+  if (isMiniAppAssoc) {
     if (hasWebApp) {
-      // Send Mini App button for secure association
-      const keyboard = {
-        inline_keyboard: [[
-          { text: t(locale, "miniapp_button_open"), web_app: { url: webAppUrl } }
-        ]]
-      };
-      await telegramSendMessage(chatId, t(locale, "miniapp_open_prompt"), {
-        reply_markup: keyboard,
-        parse_mode: "MarkdownV2"
-      });
+      await sendMiniAppPrompt(chatId, locale, webAppUrl);
     } else {
-      // Fallback to contact share
-      const keyboard = {
-        keyboard: [[{ text: "Partager mon contact", request_contact: true }]],
-        one_time_keyboard: true,
-        resize_keyboard: true
-      };
-      await sendPlainText(chatId, t(locale, "share_contact_prompt"), {
-        reply_markup: keyboard
-      });
+      // Configuration error - do NOT fall back to legacy workflow
+      await sendConfigError(chatId, locale);
     }
     return true;
   }
 
+  // Legacy explicit syntax: /assoc <phone> <encryptedPassword>
   if (text.startsWith("/assoc")) {
     const parts = text.split(/\s+/);
     const arg1 = parts[1] || "";
@@ -105,20 +104,13 @@ export async function handleAssoc(chatId, msg, locale) {
     const cleaned = String(arg1 || "").replace(/^["']|["']$/g, "").trim();
 
     if (!cleaned) {
-      pendingChats.set(chatId, {
-        createdAt: Date.now(),
-        awaitingEmail: false,
-        phoneCandidate: null,
-        awaitingAssocConfirm: false
-      });
-      const keyboard = {
-        keyboard: [[{ text: "Partager mon contact", request_contact: true }]],
-        one_time_keyboard: true,
-        resize_keyboard: true
-      };
-      await sendPlainText(chatId, t(locale, "assoc_no_phone"), {
-        reply_markup: keyboard
-      });
+      // Plain /assoc with no arguments - this should not happen since we handled it above
+      // but keep for safety - do NOT create pending state or show contact keyboard
+      if (hasWebApp) {
+        await sendMiniAppPrompt(chatId, locale, webAppUrl);
+      } else {
+        await sendConfigError(chatId, locale);
+      }
       return true;
     }
 
@@ -185,6 +177,7 @@ export async function handleAssoc(chatId, msg, locale) {
     return true;
   }
 
+  // Contact sharing - only reached via explicit legacy path (not from plain /assoc)
   if (msg.contact) {
     const phoneRaw = String(msg.contact.phone_number || "");
     const phone = normalizePhone(phoneRaw);
