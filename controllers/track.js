@@ -84,16 +84,16 @@ export async function handleTrack(chatId, text, locale) {
       (speed && Number(speed) > 0) || ignition ? "Moving" : "Stopped";
 
     out += "\n*Last position*:\n";
-    if (time) out += "- Date: " + escapeMarkdown(formatDate(time)) + "\n";
+    if (time) out += escapeMarkdown("- Date: ") + escapeMarkdown(formatDate(time)) + "\n";
     const linkLabel = pos.latitude + "," + pos.longitude;
     const linkUrl =
       "https://www.google.com/maps/search/?api=1&query=" +
       encodeURIComponent(pos.latitude + "," + pos.longitude);
-    out += "- Coordinates: " + markdownLink(linkLabel, linkUrl) + "\n";
+    out += escapeMarkdown("- Coordinates: ") + markdownLink(linkLabel, linkUrl) + "\n";
     if (typeof speed !== "undefined" && speed !== null)
-      out += "- Speed: " + escapeMarkdown(String(speed)) + " km/h\n";
-    out += "- State: " + escapeMarkdown(moving) + "\n";
-    if (attrs.battery) out += "- Battery: " + escapeMarkdown(String(attrs.battery)) + "\n";
+      out += escapeMarkdown("- Speed: ") + escapeMarkdown(String(speed)) + " km/h\n";
+    out += escapeMarkdown("- State: ") + escapeMarkdown(moving) + "\n";
+    if (attrs.battery) out += escapeMarkdown("- Battery: ") + escapeMarkdown(String(attrs.battery)) + "\n";
   } else {
     out += "\nNo position available.\n";
   }
@@ -103,7 +103,7 @@ export async function handleTrack(chatId, text, locale) {
     Object.keys(device.attributes).forEach((key) => {
       if (SENSITIVE_ATTRS.has(key)) return;
       const val = device.attributes[key];
-      out += "- " + escapeMarkdown(key) + " : " + escapeMarkdown(String(val)) + "\n";
+      out += escapeMarkdown("- ") + escapeMarkdown(key) + escapeMarkdown(" : ") + escapeMarkdown(String(val)) + "\n";
     });
   }
 

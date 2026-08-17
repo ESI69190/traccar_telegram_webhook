@@ -36,12 +36,12 @@ export default async function handleOrders(chatId, text, locale) {
       const orders = resp.data || [];
       let out = "*Orders*:\n";
       orders.forEach((order, idx) => {
-        out += `\n#${idx + 1}:\n`;
-        out += `- ID: ${order.id}\n`;
-        out += `- Unique ID: ${escapeMarkdown(order.uniqueId)}\n`;
-        out += `- Description: ${escapeMarkdown(order.description)}\n`;
-        out += `- From: ${escapeMarkdown(order.fromAddress)}\n`;
-        out += `- To: ${escapeMarkdown(order.toAddress)}\n`;
+        out += `\n\\#${idx + 1}:\\n`;
+        out += `\\- ID: ${order.id}\\n`;
+        out += `\\- Unique ID: ${escapeMarkdown(order.uniqueId)}\\n`;
+        out += `\\- Description: ${escapeMarkdown(order.description)}\\n`;
+        out += `\\- From: ${escapeMarkdown(order.fromAddress)}\\n`;
+        out += `\\- To: ${escapeMarkdown(order.toAddress)}\\n`;
       });
       await telegramSendMessage(chatId, out);
     } else {

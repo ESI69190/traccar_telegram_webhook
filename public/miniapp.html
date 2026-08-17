@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title id="pageTitle">Connect your Traccar account</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #ffffff;
+      color: #000000;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      max-width: 100%;
+      width: 100%;
+    }
+    .header {
+      text-align: center;
+      padding: 24px 16px 16px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+    .form-group {
+      margin-bottom: 16px;
+      width: 100%;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333333;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 16px;
+      border: 1px solid #d1d1d6;
+      border-radius: 10px;
+      background: #f7f7f8;
+      color: #000000;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .form-group input:focus {
+      border-color: #007aff;
+      background: #ffffff;
+    }
+    .form-group input::placeholder {
+      color: #8e8e93;
+    }
+    .btn {
+      width: 100%;
+      padding: 16px;
+      font-size: 17px;
+      font-weight: 600;
+      color: #ffffff;
+      background: #007aff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn:not(:disabled):active {
+      background: #005ecb;
+    }
+    .error {
+      background: #fff0f0;
+      border: 1px solid #ff6b6b;
+      color: #c00;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .error.visible {
+      display: block;
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 24px;
+    }
+    .loading.visible {
+      display: block;
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid #e0e0e0;
+      border-top-color: #007aff;
+      border-radius: 50%;
+      margin: 0 auto 12px;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading p {
+      margin: 0;
+      color: #8e8e93;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 id="title">Connect your Traccar account</h1>
+    </header>
+
+    <div id="error" class="error" role="alert"></div>
+
+    <form id="form" novalidate>
+      <div class="form-group">
+        <label for="identifier">Email or phone</label>
+        <input
+          type="text"
+          id="identifier"
+          name="identifier"
+          autocomplete="email"
+          placeholder="you@example.com or +33123456789"
+          required
+          inputmode="text"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          autocomplete="current-password"
+          placeholder="Your Traccar password"
+          required
+          inputmode="text"
+        >
+      </div>
+
+      <button type="submit" id="submitBtn" class="btn">Connect account</button>
+    </form>
+
+    <div id="loading" class="loading" role="status" aria-live="polite">
+      <div class="spinner"></div>
+      <p id="loadingText">Connecting...</p>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // Initialize Telegram Web App
+      const tg = window.Telegram?.WebApp;
+      if (!tg) {
+        console.error('Telegram Web App not available');
+        document.getElementById('error').textContent = 'This page must be opened in Telegram.';
+        document.getElementById('error').classList.add('visible');
+        return;
+      }
+
+      // Expand to full height
+      tg.expand();
+
+      // Theme handling
+      tg.onEvent('themeChanged', function() {
+        document.body.style.background = tg.backgroundColor || '#ffffff';
+        document.body.style.color = tg.textColor || '#000000';
+      });
+      document.body.style.background = tg.backgroundColor || '#ffffff';
+      document.body.style.color = tg.textColor || '#000000';
+
+      // Get translations from URL params or use defaults
+      const urlParams = new URLSearchParams(window.location.search);
+      const lang = urlParams.get('lang') || 'en';
+
+      const translations = {
+        en: {
+          title: 'Connect your Traccar account',
+          identifierLabel: 'Email or phone',
+          identifierPlaceholder: 'you@example.com or +33123456789',
+          passwordLabel: 'Password',
+          passwordPlaceholder: 'Your Traccar password',
+          submitBtn: 'Connect account',
+          loadingText: 'Connecting...',
+          errorInvalidRequest: 'Invalid request',
+          errorExpiredSession: 'Expired Telegram session. Please reopen the Mini App.',
+          errorAuthFailed: 'Authentication failed. Check your credentials.',
+          errorAlreadyAssociated: 'This account is already associated with another Telegram user.',
+          errorConfig: 'Configuration error. Please contact administrator.',
+          errorRateLimit: 'Too many attempts. Please try again later.',
+          errorNetwork: 'Network error. Please try again.'
+        },
+        fr: {
+          title: 'Connectez votre compte Traccar',
+          identifierLabel: 'Email ou téléphone',
+          identifierPlaceholder: 'vous@exemple.fr ou +33123456789',
+          passwordLabel: 'Mot de passe',
+          passwordPlaceholder: 'Votre mot de passe Traccar',
+          submitBtn: 'Connecter le compte',
+          loadingText: 'Connexion...',
+          errorInvalidRequest: 'Requête invalide',
+          errorExpiredSession: 'Session Telegram expirée. Veuillez rouvrir la Mini App.',
+          errorAuthFailed: 'Échec de l\'authentification. Vérifiez vos identifiants.',
+          errorAlreadyAssociated: 'Ce compte est déjà associé à un autre utilisateur Telegram.',
+          errorConfig: 'Erreur de configuration. Contactez l\'administrateur.',
+          errorRateLimit: 'Trop de tentatives. Réessayez plus tard.',
+          errorNetwork: 'Erreur réseau. Veuillez réessayer.'
+        },
+        es: {
+          title: 'Conecta tu cuenta de Traccar',
+          identifierLabel: 'Email o teléfono',
+          identifierPlaceholder: 'tú@ejemplo.es o +34123456789',
+          passwordLabel: 'Contraseña',
+          passwordPlaceholder: 'Tu contraseña de Traccar',
+          submitBtn: 'Conectar cuenta',
+          loadingText: 'Conectando...',
+          errorInvalidRequest: 'Solicitud inválida',
+          errorExpiredSession: 'Sesión de Telegram expirada. Vuelve a abrir la Mini App.',
+          errorAuthFailed: 'Error de autenticación. Verifica tus credenciales.',
+          errorAlreadyAssociated: 'Esta cuenta ya está asociada a otro usuario de Telegram.',
+          errorConfig: 'Error de configuración. Contacta al administrador.',
+          errorRateLimit: 'Demasiados intentos. Inténtalo de nuevo más tarde.',
+          errorNetwork: 'Error de red. Por favor, inténtalo de nuevo.'
+        },
+        pt: {
+          title: 'Conecte sua conta do Traccar',
+          identifierLabel: 'Email ou telefone',
+          identifierPlaceholder: 'você@exemplo.pt ou +5511912345678',
+          passwordLabel: 'Senha',
+          passwordPlaceholder: 'Sua senha do Traccar',
+          submitBtn: 'Conectar conta',
+          loadingText: 'Conectando...',
+          errorInvalidRequest: 'Solicitação inválida',
+          errorExpiredSession: 'Sessão do Telegram expirada. Reabra a Mini App.',
+          errorAuthFailed: 'Falha na autenticação. Verifique suas credenciais.',
+          errorAlreadyAssociated: 'Esta conta já está associada a outro usuário do Telegram.',
+          errorConfig: 'Erro de configuração. Contate o administrador.',
+          errorRateLimit: 'Muitas tentativas. Tente novamente mais tarde.',
+          errorNetwork: 'Erro de rede. Tente novamente.'
+        },
+        tr: {
+          title: 'Traccar hesabınızı bağlayın',
+          identifierLabel: 'E-posta veya telefon',
+          identifierPlaceholder: 'sen@ornek.com.tr veya +905551234567',
+          passwordLabel: 'Şifre',
+          passwordPlaceholder: 'Traccar şifreniz',
+          submitBtn: 'Hesabı bağla',
+          loadingText: 'Bağlanıyor...',
+          errorInvalidRequest: 'Geçersiz istek',
+          errorExpiredSession: 'Telegram oturumu süresi doldu. Mini App\'i yeniden açın.',
+          errorAuthFailed: 'Kimlik doğrulama başarısız. Bilgilerinizi kontrol edin.',
+          errorAlreadyAssociated: 'Bu hesap zaten başka bir Telegram kullanıcısıyla ilişkilendirilmiş.',
+          errorConfig: 'Yapılandırma hatası. Yöneticiye başvurun.',
+          errorRateLimit: 'Çok fazla deneme. Lütfen daha sonra tekrar deneyin.',
+          errorNetwork: 'Ağ hatası. Lütfen tekrar deneyin.'
+        },
+        ru: {
+          title: 'Подключите ваш аккаунт Traccar',
+          identifierLabel: 'Email или телефон',
+          identifierPlaceholder: 'vy@primer.ru или +79123456789',
+          passwordLabel: 'Пароль',
+          passwordPlaceholder: 'Ваш пароль Traccar',
+          submitBtn: 'Подключить аккаунт',
+          loadingText: 'Подключение...',
+          errorInvalidRequest: 'Неверный запрос',
+          errorExpiredSession: 'Сессия Telegram истекла. Пожалуйста, откройте Mini App снова.',
+          errorAuthFailed: 'Ошибка аутентификации. Проверьте ваши учетные данные.',
+          errorAlreadyAssociated: 'Этот аккаунт уже связан с другим пользователем Telegram.',
+          errorConfig: 'Ошибка конфигурации. Обратитесь к администратору.',
+          errorRateLimit: 'Слишком много попыток. Попробуйте позже.',
+          errorNetwork: 'Ошибка сети. Попробуйте снова.'
+        }
+      };
+
+      const t = translations[lang] || translations.en;
+
+      // Apply translations
+      document.getElementById('pageTitle').textContent = t.title;
+      document.getElementById('title').textContent = t.title;
+      document.querySelector('label[for="identifier"]').textContent = t.identifierLabel;
+      document.getElementById('identifier').placeholder = t.identifierPlaceholder;
+      document.querySelector('label[for="password"]').textContent = t.passwordLabel;
+      document.getElementById('password').placeholder = t.passwordPlaceholder;
+      document.getElementById('submitBtn').textContent = t.submitBtn;
+      document.getElementById('loadingText').textContent = t.loadingText;
+
+      const form = document.getElementById('form');
+      const submitBtn = document.getElementById('submitBtn');
+      const errorEl = document.getElementById('error');
+      const loadingEl = document.getElementById('loading');
+      const identifierInput = document.getElementById('identifier');
+      const passwordInput = document.getElementById('password');
+
+      // Get initData from Telegram WebApp
+      const initData = tg.initData;
+      if (!initData) {
+        errorEl.textContent = t.errorInvalidRequest;
+        errorEl.classList.add('visible');
+        submitBtn.disabled = true;
+        return;
+      }
+
+      // Get backend URL from URL params or use relative
+      const backendUrl = urlParams.get('backend') || '/api/associate/miniapp';
+
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const identifier = identifierInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!identifier || !password) {
+          errorEl.textContent = t.errorInvalidRequest;
+          errorEl.classList.add('visible');
+          return;
+        }
+
+        // Hide error, show loading
+        errorEl.classList.remove('visible');
+        loadingEl.classList.add('visible');
+        submitBtn.disabled = true;
+
+        try {
+          const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              initData: initData,
+              identifier: identifier,
+              password: password
+            })
+          });
+
+          const data = await response.json();
+
+          loadingEl.classList.remove('visible');
+
+          if (response.ok && data.ok) {
+            // Success - show success and close
+            tg.showAlert(t.title, function() {
+              tg.close();
+            });
+          } else {
+            // Map backend errors to user-friendly messages
+            let message = t.errorAuthFailed;
+            switch (data.error) {
+              case 'invalid_telegram_session':
+                message = t.errorExpiredSession;
+                break;
+              case 'already_associated':
+                message = t.errorAlreadyAssociated;
+                break;
+              case 'authentication_failed':
+                message = t.errorAuthFailed;
+                break;
+              case 'association_failed':
+                message = t.errorConfig;
+                break;
+              case 'internal_error':
+                message = t.errorConfig;
+                break;
+              case 'missing_init_data':
+              case 'invalid_content_type':
+              case 'invalid_request_body':
+              case 'missing_identifier':
+              case 'missing_password':
+              case 'init_data_too_large':
+              case 'identifier_too_long':
+              case 'password_too_long':
+                message = t.errorInvalidRequest;
+                break;
+              // Rate limiting is typically 429
+            }
+            if (response.status === 429) {
+              message = t.errorRateLimit;
+            }
+            errorEl.textContent = message;
+            errorEl.classList.add('visible');
+            submitBtn.disabled = false;
+            passwordInput.focus();
+          }
+        } catch (err) {
+          loadingEl.classList.remove('visible');
+          errorEl.textContent = t.errorNetwork;
+          errorEl.classList.add('visible');
+          submitBtn.disabled = false;
+          passwordInput.focus();
+          console.error('Mini App association error:', err);
+        }
+      });
+
+      // Focus identifier on load
+      identifierInput.focus();
+    })();
+  </script>
+</body>
+</html>

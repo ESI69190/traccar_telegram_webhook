@@ -46,17 +46,17 @@ export async function handlePositions(chatId, text, locale) {
     return;
   }
 
-  let out = escapeMarkdown(t(locale, "positions_for")) + " " + escapeMarkdown(device.name || device.uniqueId) + ":\n";
+  let out = escapeMarkdown(t(locale, "positions_for")) + " " + escapeMarkdown(device.name || device.uniqueId) + escapeMarkdown(":\n");
   limitedPositions.forEach((p, idx) => {
     const time = p.serverTime || p.fixTime || p.time || p.deviceTime || null;
-    out += `\n#${idx + 1}:\n`;
-    if (time) out += `- Date: ${escapeMarkdown(formatDate(time))}\n`;
+    out += escapeMarkdown("\n#") + escapeMarkdown(String(idx + 1)) + escapeMarkdown(":\n");
+    if (time) out += escapeMarkdown("- Date: ") + escapeMarkdown(formatDate(time)) + "\n";
     const linkLabel = p.latitude + "," + p.longitude;
     const linkUrl =
       "https://www.google.com/maps/search/?api=1&query=" +
       encodeURIComponent(p.latitude + "," + p.longitude);
-    out += `- Coordinates: ${markdownLink(linkLabel, linkUrl)}\n`;
-    out += `- Speed: ${escapeMarkdown(p.speed || 0)} km/h\n`;
+    out += escapeMarkdown("- Coordinates: ") + markdownLink(linkLabel, linkUrl) + "\n";
+    out += escapeMarkdown("- Speed: ") + escapeMarkdown(String(p.speed || 0)) + " km/h\n";
   });
 
   await telegramSendMessage(chatId, out);

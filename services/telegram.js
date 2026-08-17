@@ -10,7 +10,7 @@ const TELEGRAM_API = BOT_TOKEN
 // Bot command definitions (command identifiers must remain identical across languages)
 const BOT_COMMANDS = [
   { command: "start", description: "Start the bot and show available commands" },
-  { command: "assoc", description: "Associate phone and Telegram account" },
+  { command: "assoc", description: "Securely connect your Traccar account" },
   { command: "track", description: "Track device location and status" },
   { command: "history", description: "Show device position history" },
   { command: "status", description: "Show device summary" },
@@ -25,7 +25,7 @@ const BOT_COMMANDS = [
 const COMMAND_DESCRIPTIONS = {
   en: {
     start: "Start the bot and show available commands",
-    assoc: "Associate phone and Telegram account",
+    assoc: "Securely connect your Traccar account",
     track: "Track device location and status",
     history: "Show device position history",
     status: "Show device summary",
@@ -37,7 +37,7 @@ const COMMAND_DESCRIPTIONS = {
   },
   fr: {
     start: "Démarrer le bot et afficher les commandes disponibles",
-    assoc: "Associer téléphone et compte Telegram",
+    assoc: "Connecter votre compte Traccar de manière sécurisée",
     track: "Suivre la localisation et l'état d'un équipement",
     history: "Afficher l'historique des positions",
     status: "Afficher le résumé de l'équipement",
@@ -49,7 +49,7 @@ const COMMAND_DESCRIPTIONS = {
   },
   es: {
     start: "Iniciar el bot y mostrar comandos disponibles",
-    assoc: "Asociar teléfono y cuenta de Telegram",
+    assoc: "Conectar tu cuenta de Traccar de forma segura",
     track: "Rastrear ubicación y estado del dispositivo",
     history: "Mostrar historial de posiciones",
     status: "Mostrar resumen del dispositivo",
@@ -61,7 +61,7 @@ const COMMAND_DESCRIPTIONS = {
   },
   pt: {
     start: "Iniciar o bot e mostrar comandos disponíveis",
-    assoc: "Associar telefone e conta do Telegram",
+    assoc: "Conectar sua conta do Traccar de forma segura",
     track: "Rastrear localização e status do dispositivo",
     history: "Mostrar histórico de posições",
     status: "Mostrar resumo do dispositivo",
@@ -73,7 +73,7 @@ const COMMAND_DESCRIPTIONS = {
   },
   tr: {
     start: "Botu başlat ve kullanılabilir komutları göster",
-    assoc: "Telefon ve Telegram hesabını ilişkilendir",
+    assoc: "Traccar hesabınızı güvenli bir şekilde bağlayın",
     track: "Cihaz konumunu ve durumunu takip et",
     history: "Cihaz pozisyon geçmişini göster",
     status: "Cihaz özetini göster",
@@ -85,7 +85,7 @@ const COMMAND_DESCRIPTIONS = {
   },
   ru: {
     start: "Запустить бота и показать доступные команды",
-    assoc: "Связать телефон и аккаунт Telegram",
+    assoc: "Надежно подключить ваш аккаунт Traccar",
     track: "Отслеживать местоположение и статус устройства",
     history: "Показать историю позиций устройства",
     status: "Показать сводку по устройству",

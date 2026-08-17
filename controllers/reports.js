@@ -36,18 +36,18 @@ function computeTimeRange(days) {
 
 function formatReport(reportType, data) {
   if (!Array.isArray(data) || !data.length) {
-    return "No data for report *" + escapeMarkdown(reportType) + "*.";
+    return `No data for report *${escapeMarkdown(reportType)}*.`;
   }
-  let out = "*" + escapeMarkdown(reportType) + "* report:\n";
+  let out = `*${escapeMarkdown(reportType)}* report:\n`;
   data.slice(0, 10).forEach((row, idx) => {
-    out += `\n#${idx + 1}:\n`;
+    out += `\n\\#${idx + 1}:\\n`;
     Object.keys(row).forEach((key) => {
       if (typeof row[key] === "object" && row[key] !== null) return;
-      out += `- ${escapeMarkdown(key)}: ${escapeMarkdown(String(row[key]))}\n`;
+      out += `\\- ${escapeMarkdown(key)}: ${escapeMarkdown(String(row[key]))}\\n`;
     });
   });
   if (data.length > 10) {
-    out += `\n... and ${data.length - 10} more row(s).`;
+    out += `\\n... and ${data.length - 10} more row(s).`;
   }
   return out;
 }

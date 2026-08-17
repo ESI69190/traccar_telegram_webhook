@@ -46,17 +46,17 @@ export async function handleHistory(chatId, text, locale) {
     return;
   }
 
-  let out = "*History for* " + escapeMarkdown(device.name || device.uniqueId) + ":\n";
+  let out = escapeMarkdown("*History for* ") + escapeMarkdown(device.name || device.uniqueId) + escapeMarkdown(":\n");
   limitedPositions.forEach((p, idx) => {
     const time =
       p.serverTime || p.fixTime || p.time || p.deviceTime || null;
-    out += "\n#" + (idx + 1) + ":\n";
-    if (time) out += "- Date: " + escapeMarkdown(formatDate(time)) + "\n";
+    out += escapeMarkdown("\n#") + escapeMarkdown(String(idx + 1)) + escapeMarkdown(":\n");
+    if (time) out += escapeMarkdown("- Date: ") + escapeMarkdown(formatDate(time)) + "\n";
     const linkLabel = p.latitude + "," + p.longitude;
     const linkUrl =
       "https://www.google.com/maps/search/?api=1&query=" +
       encodeURIComponent(p.latitude + "," + p.longitude);
-    out += "- Coordinates: " + markdownLink(linkLabel, linkUrl) + "\n";
+    out += escapeMarkdown("- Coordinates: ") + markdownLink(linkLabel, linkUrl) + "\n";
   });
 
   await telegramSendMessage(chatId, out);

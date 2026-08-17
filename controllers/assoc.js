@@ -20,6 +20,10 @@ function getAssocSecret() {
   return process.env.ASSOC_SECRET || null;
 }
 
+function getWebAppUrl() {
+  return process.env.TELEGRAM_ASSOC_WEBAPP_URL || null;
+}
+
 const pendingChats = new Map();
 const PENDING_TTL = 10 * 60 * 1000;
 
@@ -57,6 +61,10 @@ async function verifyUserPassword(email, password) {
 export async function handleAssoc(chatId, msg, locale) {
   const text = (msg.text || "").trim();
 
+  // Check if Mini App is configured
+  const webAppUrl = getWebAppUrl();
+  const hasWebApp = !!webAppUrl;
+
   if (text.toLowerCase() === "/assoc telegram") {
     pendingChats.set(chatId, {
       createdAt: Date.now(),
@@ -64,14 +72,29 @@ export async function handleAssoc(chatId, msg, locale) {
       phoneCandidate: null,
       awaitingAssocConfirm: false
     });
-    const keyboard = {
-      keyboard: [[{ text: "Partager mon contact", request_contact: true }]],
-      one_time_keyboard: true,
-      resize_keyboard: true
-    };
-    await sendPlainText(chatId, t(locale, "share_contact_prompt"), {
-      reply_markup: keyboard
-    });
+
+    if (hasWebApp) {
+      // Send Mini App button for secure association
+      const keyboard = {
+        inline_keyboard: [[
+          { text: t(locale, "miniapp_button_open"), web_app: { url: webAppUrl } }
+        ]]
+      };
+      await telegramSendMessage(chatId, t(locale, "miniapp_open_prompt"), {
+        reply_markup: keyboard,
+        parse_mode: "MarkdownV2"
+      });
+    } else {
+      // Fallback to contact share
+      const keyboard = {
+        keyboard: [[{ text: "Partager mon contact", request_contact: true }]],
+        one_time_keyboard: true,
+        resize_keyboard: true
+      };
+      await sendPlainText(chatId, t(locale, "share_contact_prompt"), {
+        reply_markup: keyboard
+      });
+    }
     return true;
   }
 
