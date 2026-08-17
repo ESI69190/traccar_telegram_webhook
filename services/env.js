@@ -64,9 +64,9 @@ export function checkEnv() {
   if (!assocSecretValidation.ok) {
     const msg = `ASSOC_SECRET ${assocSecretValidation.reason}`;
     if (process.env.NODE_ENV === "production") {
-      console.error(`SECURITY ERROR: ${msg}. Association disabled in production.`);
+      console.error(`SECURITY ERROR: ${msg}. Legacy encrypted association disabled in production.`);
     } else {
-      console.warn(`WARNING: ${msg}. Association will not work securely.`);
+      console.warn(`WARNING: ${msg}. Legacy encrypted association is disabled.`);
     }
   }
 
