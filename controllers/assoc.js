@@ -64,9 +64,8 @@ async function sendMiniAppPrompt(chatId, locale, webAppUrl) {
       { text: t(locale, "miniapp_button_open"), web_app: { url: webAppUrl } }
     ]]
   };
-  await telegramSendMessage(chatId, t(locale, "miniapp_open_prompt"), {
-    reply_markup: keyboard,
-    parse_mode: "MarkdownV2"
+  await sendPlainText(chatId, t(locale, "miniapp_open_prompt"), {
+    reply_markup: keyboard
   });
 }
 
