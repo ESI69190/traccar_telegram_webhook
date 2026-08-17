@@ -258,11 +258,23 @@
       // Keep Eyeshield-Informatique branding stable regardless of Telegram theme.
       // Telegram still controls the WebApp container, but page colors remain brand-defined.
 
-      // Get translations from URL params or use defaults
+      // Get translations from URL params or use defaults with Telegram fallback
       const urlParams = new URLSearchParams(window.location.search);
-      const rawLang = urlParams.get('lang') || 'en';
-      // Normalize locale: extract base language code (e.g., de-DE -> de, zh-CN -> zh)
-      const lang = rawLang.toLowerCase().split(/[-_]/)[0];
+      
+      // Supported locales (must match translations object keys)
+      const supportedLocales = new Set(['en', 'fr', 'es', 'pt', 'tr', 'ru', 'zh', 'ja', 'de', 'ko', 'it']);
+      
+      function getSupportedLocale(locale) {
+        if (!locale) return null;
+        const base = String(locale).toLowerCase().split(/[-_]/)[0];
+        return supportedLocales.has(base) ? base : null;
+      }
+      
+      // Priority: valid URL lang parameter -> Telegram user language_code -> English
+      const lang = 
+        getSupportedLocale(urlParams.get('lang')) ||
+        getSupportedLocale(tg.initDataUnsafe?.user?.language_code) ||
+        'en';
 
       const translations = {
         en: {
