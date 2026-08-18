@@ -96,7 +96,7 @@ const COMMAND_DESCRIPTIONS = {
     reports: "Сгенерировать отчет"
   },
   zh: {
-    start: "启动机器人并显示可用命令",
+    start: "激活机器人并显示可用命令",
     assoc: "安全连接您的 Traccar 账户",
     track: "追踪设备位置和状态",
     history: "显示设备位置历史",
@@ -137,7 +137,7 @@ const COMMAND_DESCRIPTIONS = {
     track: "기기 위치 및 상태 추적",
     history: "기기 위치 기록 표시",
     status: "기기 요약 표시",
-    engine: "엔진 켜기/끄기 명령 전송",
+    engine: "엔진 온/오프 명령 전송",
     commands: "사용자 정의 명령 전송",
     orders: "주문 관리",
     positions: "최근 위치 목록 보기",
@@ -266,6 +266,18 @@ export async function telegramSendMessage(chatId, text, options) {
  */
 export async function sendPlainText(chatId, text, options) {
   return telegramSendMessage(chatId, escapeMarkdown(text), {
+    ...options,
+    parse_mode: "MarkdownV2"
+  });
+}
+
+/**
+ * Edit a message text safely in MarkdownV2 parse mode.
+ * The entire text is escaped; use editMessageText directly when you need
+ * intentional MarkdownV2 formatting.
+ */
+export async function editPlainText(chatId, messageId, text, options) {
+  return editMessageText(chatId, messageId, escapeMarkdown(text), {
     ...options,
     parse_mode: "MarkdownV2"
   });
