@@ -270,3 +270,91 @@ export async function sendPlainText(chatId, text, options) {
     parse_mode: "MarkdownV2"
   });
 }
+
+/**
+ * Answer a callback query to stop the loading indicator on the client.
+ */
+export async function answerCallbackQuery(callbackQueryId, options = {}) {
+  if (!TELEGRAM_API) {
+    console.warn("answerCallbackQuery: BOT_TOKEN missing");
+    return null;
+  }
+  try {
+    const payload = {
+      callback_query_id: callbackQueryId,
+      text: options.text,
+      show_alert: options.show_alert || false,
+      url: options.url,
+      cache_time: options.cache_time || 0
+    };
+    const resp = await axios.post(TELEGRAM_API + "/answerCallbackQuery", payload, {
+      validateStatus: () => true
+    });
+    return resp.data;
+  } catch (err) {
+    console.error("answerCallbackQuery error:", err?.toString());
+    return null;
+  }
+}
+
+/**
+ * Edit the text of a message sent by the bot.
+ */
+export async function editMessageText(chatId, messageId, text, options = {}) {
+  if (!TELEGRAM_API) {
+    console.warn("editMessageText: BOT_TOKEN missing");
+    return null;
+  }
+  try {
+    const payload = {
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: options.parse_mode || "MarkdownV2",
+      reply_markup: options.reply_markup
+    };
+    const resp = await axios.post(TELEGRAM_API + "/editMessageText", payload, {
+      validateStatus: () => true
+    });
+    if (resp.status !== 200) {
+      console.log("<- Telegram editMessageText", {
+        status: resp.status,
+        description: resp.data?.description
+      });
+    }
+    return resp.data;
+  } catch (err) {
+    console.error("editMessageText error:", err?.toString());
+    return null;
+  }
+}
+
+/**
+ * Edit only the reply markup (inline keyboard) of a message sent by the bot.
+ */
+export async function editMessageReplyMarkup(chatId, messageId, replyMarkup) {
+  if (!TELEGRAM_API) {
+    console.warn("editMessageReplyMarkup: BOT_TOKEN missing");
+    return null;
+  }
+  try {
+    const payload = {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: replyMarkup
+    };
+    const resp = await axios.post(TELEGRAM_API + "/editMessageReplyMarkup", payload, {
+      validateStatus: () => true
+    });
+    if (resp.status !== 200) {
+      console.log("<- Telegram editMessageReplyMarkup", {
+        status: resp.status,
+        description: resp.data?.description
+      });
+    }
+    return resp.data;
+  } catch (err) {
+    console.error("editMessageReplyMarkup error:", err?.toString());
+    return null;
+  }
+}
