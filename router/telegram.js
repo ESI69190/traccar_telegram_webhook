@@ -11,6 +11,7 @@ import { handlePositions } from "../controllers/positions.js";
 import { handleCommands } from "../controllers/commands.js";
 import handleOrders from "../controllers/orders.js";
 import { handleReports } from "../controllers/reports.js";
+import { handleCallbackQuery, sendMainMenu } from "../services/callbackRouter.js";
 
 export async function handleTelegramUpdate(req, res) {
   try {
@@ -27,6 +28,13 @@ export async function handleTelegramUpdate(req, res) {
     }
 
     const update = req.body;
+    
+    // Handle callback queries (inline keyboard button presses)
+    if (update.callback_query) {
+      await handleCallbackQuery(update);
+      return res.sendStatus(200);
+    }
+    
     const msg = update && update.message;
     if (!msg) return res.sendStatus(200);
 
@@ -46,15 +54,7 @@ export async function handleTelegramUpdate(req, res) {
 
     // /start
     if (text.startsWith("/start")) {
-      let startMsg =
-        t(locale, "start_intro") +
-        "\n\n" +
-        t(locale, "start_commands") +
-        "\n\n";
-      if (!associatedUser) {
-        startMsg += t(locale, "start_assoc_prompt");
-      }
-      await sendPlainText(chatId, startMsg);
+      await sendMainMenu(chatId, locale, associatedUser);
       return res.sendStatus(200);
     }
 

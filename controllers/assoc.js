@@ -24,7 +24,7 @@ function getWebAppUrl() {
   return process.env.TELEGRAM_ASSOC_WEBAPP_URL || null;
 }
 
-function buildLocalizedWebAppUrl(webAppUrl, locale) {
+export function buildLocalizedWebAppUrl(webAppUrl, locale) {
   try {
     const url = new URL(webAppUrl);
     url.searchParams.set("lang", locale || "en");
