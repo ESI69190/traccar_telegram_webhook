@@ -111,6 +111,177 @@ test("handleTrack allows authorized device", async () => {
   );
 });
 
+test("handleTrack maps two devices by name to correct Traccar IDs", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 5);
+  traccar
+    .get("/api/devices")
+    .query({ userId: "5" })
+    .reply(200, [
+      { id: 1, name: "BMW E90", uniqueId: "UID1", attributes: {} },
+      { id: 2, name: "iPhone", uniqueId: "UID2", attributes: {} }
+    ])
+    .persist();
+  traccar
+    .get("/api/positions")
+    .query((query) => String(query.deviceId) === "2" && query.from && query.to)
+    .reply(200, []);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleTrack("123", "/track iPhone", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected all Traccar mocks to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  assert.ok(capturedText.includes("iPhone"), "Device name should be shown");
+  assert.ok(capturedText.includes("ID: 2"), "iPhone should map to Traccar device ID 2");
+});
+
+test("handleTrack maps BMW E90 to device ID 1", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 5);
+  traccar
+    .get("/api/devices")
+    .query({ userId: "5" })
+    .reply(200, [
+      { id: 1, name: "BMW E90", uniqueId: "UID1", attributes: {} },
+      { id: 2, name: "iPhone", uniqueId: "UID2", attributes: {} }
+    ])
+    .persist();
+  traccar
+    .get("/api/positions")
+    .query((query) => String(query.deviceId) === "1" && query.from && query.to)
+    .reply(200, []);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleTrack("123", "/track BMW E90", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected all Traccar mocks to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  assert.ok(capturedText.includes("BMW E90"), "Device name should be shown");
+  assert.ok(capturedText.includes("ID: 1"), "BMW E90 should map to Traccar device ID 1");
+});
+
+test("handleTrack escapes No position available for MarkdownV2", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  mockDevicesForUser(traccar, 1);
+  traccar
+    .get("/api/positions")
+    .query((query) => String(query.deviceId) === "1" && query.from && query.to)
+    .reply(200, []);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleTrack("123", "/track car1", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected all Traccar mocks to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  assert.ok(capturedText.includes("No position available\\."), "Period in 'No position available.' should be escaped for MarkdownV2");
+});
+
+test("handleTrack escapes device attributes with special characters", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  traccar
+    .get("/api/devices")
+    .query({ userId: "1" })
+    .reply(200, [
+      {
+        id: 1,
+        name: "iPhone-Test_01",
+        uniqueId: "UID1",
+        attributes: {
+          notificationTokens: "abc-def_ghi.test",
+          plate: "BMW (E90)",
+          note: "test.example foo[bar] hello!"
+        }
+      }
+    ])
+    .persist();
+  traccar
+    .get("/api/positions")
+    .query((query) => String(query.deviceId) === "1" && query.from && query.to)
+    .reply(200, []);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleTrack("123", "/track iPhone-Test_01", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected all Traccar mocks to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  // Device name with hyphen and underscore should be escaped
+  assert.ok(capturedText.includes("iPhone\\-Test\\_01"), "Device name special chars should be escaped");
+  // Attribute values with special chars should be escaped
+  assert.ok(capturedText.includes("abc\\-def\\_ghi\\.test"), "notificationTokens value should be escaped");
+  assert.ok(capturedText.includes("BMW \\(E90\\)"), "Parentheses in attribute should be escaped");
+  assert.ok(capturedText.includes("test\\.example foo\\[bar\\] hello\\!"), "Special chars in note should be escaped");
+});
+
+test("handleTrack escapes device ID in output", async () => {
+  cleanAll();
+  const traccar = setupTraccarNock();
+  const telegram = setupTelegramNock();
+  mockUser(traccar, 123, 1);
+  mockDevicesForUser(traccar, 1);
+  traccar
+    .get("/api/positions")
+    .query((query) => String(query.deviceId) === "1" && query.from && query.to)
+    .reply(200, []);
+  let capturedText;
+  telegram
+    .post("/bot" + process.env.BOT_TOKEN + "/sendMessage", (body) => {
+      capturedText = body.text;
+      return true;
+    })
+    .reply(200, { ok: true });
+
+  await handleTrack("123", "/track car1", "en");
+
+  assert.ok(
+    traccar.isDone(),
+    `Expected all Traccar mocks to be consumed. Pending: ${traccar.pendingMocks()}`
+  );
+  assert.ok(capturedText.includes("ID: 1"), "Device ID should be displayed");
+});
+
 test("handleTrack escapes MarkdownV2 in device name and attributes", async () => {
   cleanAll();
   const traccar = setupTraccarNock();
