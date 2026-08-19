@@ -50,3 +50,41 @@ export async function findDeviceForUser(chatId, userId, identifier) {
   }
   return null;
 }
+
+/**
+ * Find a single device accessible to the user by Traccar device ID.
+ * Device IDs from callback data or internal lookups must be normalized
+ * before comparison to avoid string vs number mismatches.
+ */
+export async function findDeviceByIdForUser(chatId, userId, rawDeviceId) {
+  const deviceId = Number(rawDeviceId);
+
+  if (!Number.isInteger(deviceId) || deviceId <= 0) {
+    console.log("[permissions] Invalid deviceId for lookup:", rawDeviceId);
+    return null;
+  }
+
+  const devices = await getDevicesForUser(chatId, userId);
+
+  console.log(
+    "[TRACCAR DEVICES]",
+    devices.map((d) => ({
+      id: d.id,
+      idType: typeof d.id,
+      name: d.name,
+      uniqueId: d.uniqueId
+    }))
+  );
+
+  const device = devices.find((d) => Number(d.id) === deviceId);
+
+  console.log("[TRACK MATCH]", {
+    requestedDeviceId: deviceId,
+    foundDeviceId: device?.id,
+    deviceIdType: typeof device?.id,
+    deviceName: device?.name,
+    uniqueId: device?.uniqueId
+  });
+
+  return device || null;
+}

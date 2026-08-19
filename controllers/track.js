@@ -21,7 +21,7 @@ function computeTimeRange(limit) {
 
 export async function handleTrack(chatId, text, locale) {
   const parts = text.split(/\s+/);
-  const identifier = parts[1];
+  const identifier = parts.slice(1).join(" ");
 
   const user = await findUserByChatId(chatId);
   if (!user) {
@@ -68,7 +68,7 @@ export async function handleTrack(chatId, text, locale) {
     "* : " +
     escapeMarkdown(device.name || device.uniqueId) +
     "\n";
-  out += "ID: " + String(device.id) + "\n";
+  out += escapeMarkdown("ID: ") + escapeMarkdown(String(device.id)) + "\n";
 
   if (pos) {
     const time =
@@ -95,7 +95,7 @@ export async function handleTrack(chatId, text, locale) {
     out += escapeMarkdown("- State: ") + escapeMarkdown(moving) + "\n";
     if (attrs.battery) out += escapeMarkdown("- Battery: ") + escapeMarkdown(String(attrs.battery)) + "\n";
   } else {
-    out += "\nNo position available.\n";
+    out += "\n" + escapeMarkdown("No position available.") + "\n";
   }
 
   if (device.attributes && Object.keys(device.attributes).length) {
