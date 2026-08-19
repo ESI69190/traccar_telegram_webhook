@@ -1,6 +1,6 @@
 // services/callbackRouter.js
 import { findUserByChatId, getLastPositions } from "./traccar.js";
-import { getDevicesForUser, findDeviceForUser } from "./permissions.js";
+import { getDevicesForUser, findDeviceByIdForUser } from "./permissions.js";
 import { telegramSendMessage, sendPlainText, editPlainText, answerCallbackQuery, editMessageText, editMessageReplyMarkup } from "./telegram.js";
 import { getUserLocale, t } from "./i18n.js";
 import { formatDate, escapeMarkdown, markdownLink, MAX_LIMIT } from "./security.js";
@@ -193,7 +193,7 @@ async function sendDeviceSelector(chatId, locale, user, messageId, targetAction)
 }
 
 async function sendTrackResult(chatId, locale, user, deviceId, messageId = null) {
-  const device = await findDeviceForUser(chatId, user.id, deviceId);
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
   if (!device) {
     const text = t(locale, "track_device_not_found") + deviceId;
     const keyboard = { inline_keyboard: [[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]] };
@@ -206,7 +206,7 @@ async function sendTrackResult(chatId, locale, user, deviceId, messageId = null)
   const pos = positions[0];
 
   let out = "*" + escapeMarkdown(t(locale, "track_device_info_title")) + "* : " + escapeMarkdown(device.name || device.uniqueId) + "\n";
-  out += "ID: " + String(device.id) + "\n";
+  out += escapeMarkdown("ID: ") + escapeMarkdown(String(device.id)) + "\n";
 
   if (pos) {
     const time = pos.serverTime || pos.fixTime || pos.time || pos.deviceTime || null;
@@ -257,7 +257,7 @@ async function sendTrackResult(chatId, locale, user, deviceId, messageId = null)
 }
 
 async function sendHistoryMenu(chatId, locale, user, deviceId, messageId = null) {
-  const device = await findDeviceForUser(chatId, user.id, deviceId);
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
   if (!device) {
     const text = t(locale, "track_device_not_found") + deviceId;
     const keyboard = { inline_keyboard: [[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]] };
@@ -280,7 +280,7 @@ async function sendHistoryMenu(chatId, locale, user, deviceId, messageId = null)
 }
 
 async function sendHistoryResult(chatId, locale, user, deviceId, range, messageId = null) {
-  const device = await findDeviceForUser(chatId, user.id, deviceId);
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
   if (!device) {
     const text = t(locale, "track_device_not_found") + deviceId;
     const keyboard = { inline_keyboard: [[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]] };
@@ -323,7 +323,7 @@ async function sendHistoryResult(chatId, locale, user, deviceId, range, messageI
 }
 
 async function sendStatusResult(chatId, locale, user, deviceId, messageId = null) {
-  const device = await findDeviceForUser(chatId, user.id, deviceId);
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
   if (!device) {
     const text = t(locale, "track_device_not_found") + deviceId;
     const keyboard = { inline_keyboard: [[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]] };
@@ -336,7 +336,7 @@ async function sendStatusResult(chatId, locale, user, deviceId, messageId = null
   const pos = positions[0];
 
   let out = "*" + escapeMarkdown(t(locale, "status_title")) + "* : " + escapeMarkdown(device.name || device.uniqueId) + "\n";
-  out += "ID: " + String(device.id) + "\n";
+  out += escapeMarkdown("ID: ") + escapeMarkdown(String(device.id)) + "\n";
 
   if (pos) {
     const time = pos.serverTime || pos.fixTime || pos.time || pos.deviceTime || null;
@@ -387,7 +387,7 @@ async function sendStatusResult(chatId, locale, user, deviceId, messageId = null
 }
 
 async function sendCommandsMenu(chatId, locale, user, deviceId, messageId = null) {
-  const device = await findDeviceForUser(chatId, user.id, deviceId);
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
   if (!device) {
     const text = t(locale, "track_device_not_found") + deviceId;
     const keyboard = { inline_keyboard: [[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]] };
@@ -407,7 +407,7 @@ async function sendCommandsMenu(chatId, locale, user, deviceId, messageId = null
 }
 
 async function sendEngineConfirmation(chatId, locale, user, deviceId, action, messageId = null) {
-  const device = await findDeviceForUser(chatId, user.id, deviceId);
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
   if (!device) {
     const text = t(locale, "track_device_not_found") + deviceId;
     const keyboard = { inline_keyboard: [[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]] };
@@ -431,7 +431,7 @@ async function sendEngineConfirmation(chatId, locale, user, deviceId, action, me
 }
 
 async function executeEngineCommand(chatId, locale, user, deviceId, action) {
-  const device = await findDeviceForUser(chatId, user.id, deviceId);
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
   if (!device) {
     await sendPlainText(chatId, t(locale, "track_device_not_found") + deviceId);
     return;
@@ -461,7 +461,7 @@ async function sendOrdersMenu(chatId, locale, user, messageId = null) {
 }
 
 async function sendPositionsResult(chatId, locale, user, deviceId, messageId = null) {
-  const device = await findDeviceForUser(chatId, user.id, deviceId);
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
   if (!device) {
     const text = t(locale, "track_device_not_found") + deviceId;
     const keyboard = { inline_keyboard: [[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]] };
@@ -503,7 +503,7 @@ async function sendPositionsResult(chatId, locale, user, deviceId, messageId = n
 }
 
 async function sendReportsMenu(chatId, locale, user, deviceId, messageId = null) {
-  const device = await findDeviceForUser(chatId, user.id, deviceId);
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
   if (!device) {
     const text = t(locale, "track_device_not_found") + deviceId;
     const keyboard = { inline_keyboard: [[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]] };
@@ -525,7 +525,7 @@ async function sendReportsMenu(chatId, locale, user, deviceId, messageId = null)
 }
 
 async function sendReportResult(chatId, locale, user, deviceId, reportType, messageId = null) {
-  const device = await findDeviceForUser(chatId, user.id, deviceId);
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
   if (!device) {
     const text = t(locale, "track_device_not_found") + deviceId;
     const keyboard = { inline_keyboard: [[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]] };
