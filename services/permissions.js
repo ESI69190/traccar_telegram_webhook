@@ -66,25 +66,7 @@ export async function findDeviceByIdForUser(chatId, userId, rawDeviceId) {
 
   const devices = await getDevicesForUser(chatId, userId);
 
-  console.log(
-    "[TRACCAR DEVICES]",
-    devices.map((d) => ({
-      id: d.id,
-      idType: typeof d.id,
-      name: d.name,
-      uniqueId: d.uniqueId
-    }))
-  );
-
   const device = devices.find((d) => Number(d.id) === deviceId);
-
-  console.log("[TRACK MATCH]", {
-    requestedDeviceId: deviceId,
-    foundDeviceId: device?.id,
-    deviceIdType: typeof device?.id,
-    deviceName: device?.name,
-    uniqueId: device?.uniqueId
-  });
 
   return device || null;
 }

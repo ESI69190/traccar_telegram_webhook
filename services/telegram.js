@@ -328,6 +328,17 @@ export async function editMessageText(chatId, messageId, text, options = {}) {
     const resp = await axios.post(TELEGRAM_API + "/editMessageText", payload, {
       validateStatus: () => true
     });
+    // Telegram returns HTTP 400 "message is not modified" when neither the text
+    // nor the reply markup changed (e.g. the user pressed Refresh immediately).
+    // This is a benign no-op, not an application error: do not retry, do not
+    // send an additional message, and do not log it as an error.
+    if (
+      resp.status === 400 &&
+      resp.data?.description &&
+      String(resp.data.description).includes("message is not modified")
+    ) {
+      return { ok: true, unchanged: true };
+    }
     if (resp.status !== 200) {
       console.log("<- Telegram editMessageText", {
         status: resp.status,
