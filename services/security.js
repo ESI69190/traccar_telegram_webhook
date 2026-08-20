@@ -37,32 +37,127 @@ const PAYLOAD_VERSION = 1;
 
 export const MAX_LIMIT = 50;
 
+function isAsciiLetterOrDigit(character) {
+  const code = character.charCodeAt(0);
+  return (
+    (code >= 48 && code <= 57) ||
+    (code >= 65 && code <= 90) ||
+    (code >= 97 && code <= 122)
+  );
+}
+
+function digitsOnly(value) {
+  const digits = [];
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code >= 48 && code <= 57) digits.push(character);
+  }
+  return digits.join("");
+}
+
 export function normalizePhone(phone) {
   if (!phone) return "";
+
   let s = String(phone).trim();
-  s = s.replace(/[\s\-\(\)]/g, "");
-  s = s.replace(/^["']+|["']+$/g, "");
+  const withoutSeparators = [];
+  for (const character of s) {
+    if (character === "-" || character === "(" || character === ")" || character.trim() === "") {
+      continue;
+    }
+    withoutSeparators.push(character);
+  }
+  s = withoutSeparators.join("");
+
+  let start = 0;
+  let end = s.length;
+  while (start < end && (s[start] === '"' || s[start] === "'")) start += 1;
+  while (end > start && (s[end - 1] === '"' || s[end - 1] === "'")) end -= 1;
+  s = s.slice(start, end);
+
   if (s.indexOf("00") === 0) {
     s = "+" + s.slice(2);
   }
   if (s.indexOf("+") === 0) {
-    const digits = s.slice(1).replace(/\D/g, "");
-    return "+" + digits;
+    return "+" + digitsOnly(s.slice(1));
   }
-  const digitsOnly = s.replace(/\D/g, "");
+
+  const normalized = digitsOnly(s);
   // No country assumption - if it looks like a local number without country code,
   // return as-is (caller should provide international format)
   // For backward compatibility, if >10 digits assume it includes country code
-  if (digitsOnly.length > 10) {
-    return "+" + digitsOnly;
+  if (normalized.length > 10) {
+    return "+" + normalized;
   }
-  return digitsOnly;
+  return normalized;
+}
+
+const MAX_EMAIL_LENGTH = 254;
+const MAX_EMAIL_LOCAL_LENGTH = 64;
+const MAX_EMAIL_DOMAIN_LABEL_LENGTH = 63;
+
+function containsWhitespace(value) {
+  for (const character of value) {
+    if (character.trim() === "") return true;
+  }
+  return false;
+}
+
+function isValidLocalPart(localPart) {
+  if (
+    !localPart ||
+    localPart.length > MAX_EMAIL_LOCAL_LENGTH ||
+    localPart.startsWith(".") ||
+    localPart.endsWith(".") ||
+    localPart.includes("..")
+  ) {
+    return false;
+  }
+
+  const allowedSpecials = new Set("!#$%&'*+-/=?^_`{|}~.");
+  for (const character of localPart) {
+    if (isAsciiLetterOrDigit(character) || allowedSpecials.has(character)) continue;
+    return false;
+  }
+  return true;
+}
+
+function isValidDomain(domain) {
+  if (!domain || domain.length > 253 || !domain.includes(".")) return false;
+
+  const labels = domain.split(".");
+  if (labels.length < 2 || labels[labels.length - 1].length < 2) return false;
+
+  for (const label of labels) {
+    if (
+      !label ||
+      label.length > MAX_EMAIL_DOMAIN_LABEL_LENGTH ||
+      label.startsWith("-") ||
+      label.endsWith("-")
+    ) {
+      return false;
+    }
+
+    for (const character of label) {
+      if (!isAsciiLetterOrDigit(character) && character !== "-") return false;
+    }
+  }
+
+  return true;
 }
 
 export function isValidEmail(email) {
-  if (!email) return false;
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(String(email).trim());
+  if (email === undefined || email === null) return false;
+
+  const value = String(email);
+  if (!value || value.length > MAX_EMAIL_LENGTH || containsWhitespace(value)) return false;
+
+  const atIndex = value.indexOf("@");
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf("@") || atIndex === value.length - 1) {
+    return false;
+  }
+
+  return isValidLocalPart(value.slice(0, atIndex)) &&
+    isValidDomain(value.slice(atIndex + 1));
 }
 
 export function isPositiveIntegerId(value) {
@@ -176,12 +271,22 @@ export function redactPhone(phone) {
  * Only dynamic/user-controlled values should be passed through this helper;
  * intentional Markdown formatting in static templates must remain unescaped.
  *
- * Reserved characters: _ * [ ] ( ) ~ ` > # + - = | { } . !
+ * Reserved characters: _ * [ ] ( ) ~ ` > # + - = | { } . ! \
  */
+const MARKDOWN_V2_RESERVED_CHARACTERS = new Set([
+  "_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=",
+  "|", "{", "}", ".", "!", "\\"
+]);
+
 export function escapeMarkdown(text) {
   if (text === undefined || text === null) return "";
-  return String(text)
-    .replace(/([_\*\[\]\(\)~`>#+=|{}\.!-])/g, "\\$1");
+
+  const escaped = [];
+  for (const character of String(text)) {
+    if (MARKDOWN_V2_RESERVED_CHARACTERS.has(character)) escaped.push("\\");
+    escaped.push(character);
+  }
+  return escaped.join("");
 }
 
 /**
@@ -191,8 +296,16 @@ export function escapeMarkdown(text) {
  */
 export function markdownLink(label, url) {
   const safeLabel = escapeMarkdown(label);
-  const safeUrl = String(url || "")
-    .replace(/\\/g, "")
-    .replace(/\)/g, "%29");
-  return `[${safeLabel}](${safeUrl})`;
+  const safeUrl = [];
+  for (const character of String(url || "")) {
+    if (character === "\\") {
+      safeUrl.push("\\\\");
+    } else if (character === ")") {
+      // Percent-encoding keeps a literal ')' from closing the MarkdownV2 link.
+      safeUrl.push("%29");
+    } else {
+      safeUrl.push(character);
+    }
+  }
+  return `[${safeLabel}](${safeUrl.join("")})`;
 }

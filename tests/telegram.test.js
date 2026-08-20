@@ -17,9 +17,12 @@ function cleanAll() {
 }
 
 test("escapeMarkdown escapes all MarkdownV2 reserved characters", () => {
-  const reserved = "_*[]()~`>#+-=|{}.!";
+  const reserved = "_*[]()~`>#+-=|{}.!\\";
   const escaped = escapeMarkdown(reserved);
-  assert.strictEqual(escaped, "\\_\\*\\[\\]\\(\\)\\~\\`\\>\\#\\+\\-\\=\\|\\{\\}\\.\\!");
+  assert.strictEqual(
+    escaped,
+    "\\_\\*\\[\\]\\(\\)\\~\\`\\>\\#\\+\\-\\=\\|\\{\\}\\.\\!\\\\"
+  );
 });
 
 test("escapeMarkdown handles device names with special characters", () => {

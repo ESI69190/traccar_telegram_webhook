@@ -18,6 +18,22 @@ test("normalizePhone strips surrounding quotes", () => {
   assert.strictEqual(normalizePhone("' +33 1 23 45 67 89 '"), "+33123456789");
 });
 
+test("normalizePhone removes separators and handles international prefixes", () => {
+  assert.strictEqual(normalizePhone(" +1 (202)-555 0123 "), "+12025550123");
+  assert.strictEqual(normalizePhone("0033 (1) 23-45-67-89"), "+33123456789");
+  assert.strictEqual(normalizePhone("+33 1 23 45 67 89"), "+33123456789");
+  assert.strictEqual(normalizePhone("01 23 45 67 89"), "0123456789");
+});
+
+test("normalizePhone handles long quote sequences and malicious input linearly", () => {
+  const quotes = "'".repeat(100000);
+  assert.strictEqual(
+    normalizePhone(`${quotes}+33 1 23 45 67 89${quotes}`),
+    "+33123456789"
+  );
+  assert.strictEqual(normalizePhone("x".repeat(100000)), "");
+});
+
 test("isPositiveIntegerId accepts positive integers", () => {
   assert.strictEqual(isPositiveIntegerId("123"), true);
   assert.strictEqual(isPositiveIntegerId("0"), true);
@@ -45,16 +61,28 @@ test("MAX_LIMIT is 50", () => {
   assert.strictEqual(MAX_LIMIT, 50);
 });
 
-test("isValidEmail accepts valid emails", () => {
+test("isValidEmail accepts normal valid emails", () => {
   assert.strictEqual(isValidEmail("user@example.com"), true);
-  assert.strictEqual(isValidEmail("a.b@c.co"), true);
+  assert.strictEqual(isValidEmail("a.b+tag@sub.example.co"), true);
 });
 
-test("isValidEmail rejects invalid emails", () => {
+test("isValidEmail rejects malformed and unsafe input", () => {
   assert.strictEqual(isValidEmail("invalid"), false);
-  assert.strictEqual(isValidEmail(""), false);
+  assert.strictEqual(isValidEmail("userexample.com"), false);
+  assert.strictEqual(isValidEmail("user@example@other.com"), false);
+  assert.strictEqual(isValidEmail("@example.com"), false);
   assert.strictEqual(isValidEmail("user@"), false);
+  assert.strictEqual(isValidEmail("user@example"), false);
+  assert.strictEqual(isValidEmail("user@.example.com"), false);
+  assert.strictEqual(isValidEmail("user@example..com"), false);
+  assert.strictEqual(isValidEmail(" user@example.com"), false);
+  assert.strictEqual(isValidEmail("user@example.com "), false);
   assert.strictEqual(isValidEmail(null), false);
+});
+
+test("isValidEmail rejects overlong and regex-backtracking payloads", () => {
+  assert.strictEqual(isValidEmail("a".repeat(255) + "@example.com"), false);
+  assert.strictEqual(isValidEmail("a".repeat(100000) + "@example.com"), false);
 });
 
 test("escapeMarkdown escapes MarkdownV2 reserved characters", () => {
@@ -86,15 +114,41 @@ test("escapeMarkdown preserves normal and Unicode text", () => {
   assert.strictEqual(escapeMarkdown("2024-01-01 12:00:00"), "2024\\-01\\-01 12:00:00");
 });
 
-test("escapeMarkdown handles null and undefined", () => {
-  assert.strictEqual(escapeMarkdown(null), "");
-  assert.strictEqual(escapeMarkdown(undefined), "");
+test("escapeMarkdown handles backslashes without double-escaping raw text", () => {
+  assert.strictEqual(escapeMarkdown("\\"), "\\\\");
+  assert.strictEqual(escapeMarkdown("\\\\"), "\\\\\\\\");
+  assert.strictEqual(
+    escapeMarkdown("\\_*[]()"),
+    "\\\\\\_\\*\\[\\]\\(\\)"
+  );
 });
 
-test("markdownLink escapes label and URL", () => {
+test("escapeMarkdown handles null, plain, and Unicode text", () => {
+  assert.strictEqual(escapeMarkdown(null), "");
+  assert.strictEqual(escapeMarkdown(undefined), "");
+  assert.strictEqual(escapeMarkdown("plain text"), "plain text");
+  assert.strictEqual(escapeMarkdown("Camion 🚛 déjà vu"), "Camion 🚛 déjà vu");
+});
+
+test("markdownLink escapes label and URL according to their contexts", () => {
   const link = markdownLink("Paris, France", "https://example.com?q=paris");
   assert.ok(link.startsWith("[Paris, France]"));
   assert.ok(link.includes("https://example.com?q=paris"));
+
+  const linkWithClosingParenthesis = markdownLink(
+    "A ) label",
+    "https://example.com/path)segment"
+  );
+  assert.strictEqual(
+    linkWithClosingParenthesis,
+    "[A \\) label](https://example.com/path%29segment)"
+  );
+
+  const linkWithBackslash = markdownLink(
+    "safe label",
+    "https://example.com/path\\segment"
+  );
+  assert.ok(linkWithBackslash.includes("path\\\\segment"));
 });
 
 test("sendPlainText escapes start_commands help text", async () => {
