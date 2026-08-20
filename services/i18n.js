@@ -39,8 +39,14 @@ export function getUserLocale(user, telegramLanguageCode) {
   );
 }
 
-export function t(locale, key) {
+export function t(locale, key, params) {
   const normalized = normalizeLocale(locale);
   const dict = TRANSLATIONS[normalized] || TRANSLATIONS.en;
-  return dict[key] || TRANSLATIONS.en[key] || key;
+  let text = dict[key] || TRANSLATIONS.en[key] || key;
+  if (params && typeof params === "object") {
+    for (const [name, value] of Object.entries(params)) {
+      text = text.split("{" + name + "}").join(String(value));
+    }
+  }
+  return text;
 }

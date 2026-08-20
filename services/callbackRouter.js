@@ -7,7 +7,7 @@ import { formatDate, escapeMarkdown, markdownLink, MAX_LIMIT } from "./security.
 import { handleTrack } from "../controllers/track.js";
 import { handleHistory } from "../controllers/history.js";
 import { handleStatus } from "../controllers/status.js";
-import { handleEngine } from "../controllers/engine.js";
+import { executeEngineAction } from "../controllers/engine.js";
 import { handleCommands } from "../controllers/commands.js";
 import handleOrders from "../controllers/orders.js";
 import { handlePositions } from "../controllers/positions.js";
@@ -318,8 +318,7 @@ async function sendHistoryResult(chatId, locale, user, deviceId, range, messageI
       [{ text: t(locale, "btn_home"), callback_data: "nav:home" }]
     ]
   };
-
-  await sendOrEditPlainText(chatId, messageId, out, { reply_markup: keyboard });
+  await sendOrEditMarkdown(chatId, messageId, out, { reply_markup: keyboard });
 }
 
 async function sendStatusResult(chatId, locale, user, deviceId, messageId = null) {
@@ -415,8 +414,8 @@ async function sendEngineConfirmation(chatId, locale, user, deviceId, action, me
     return;
   }
 
-  const actionText = action === "on" ? t(locale, "engine_on") : t(locale, "engine_off");
-  const text = t(locale, "engine_confirm", { action: actionText, device: device.name || device.uniqueId });
+  const actionText = action === "on" ? t(locale, "btn_engine_on") : t(locale, "btn_engine_off");
+  const text = t(locale, "confirm_engine_action", { action: actionText, device: device.name || device.uniqueId });
   const keyboard = {
     inline_keyboard: [
       [
@@ -437,14 +436,12 @@ async function executeEngineCommand(chatId, locale, user, deviceId, action) {
     return;
   }
 
-  await sendPlainText(chatId, t(locale, "engine_sending", { action: action === "on" ? t(locale, "engine_on") : t(locale, "engine_off") }));
+  const result = await executeEngineAction(device.id, action);
 
-  const result = await handleEngine(chatId, user.id, deviceId, action);
-
-  if (result.success) {
-    await sendPlainText(chatId, t(locale, "engine_success", { action: action === "on" ? t(locale, "engine_on") : t(locale, "engine_off") }));
+  if (result.valid && result.ok) {
+    await sendPlainText(chatId, t(locale, "engine_command_sent"));
   } else {
-    await sendPlainText(chatId, t(locale, "engine_failed", { error: result.error || t(locale, "generic_error") }));
+    await sendPlainText(chatId, t(locale, "engine_command_failed"));
   }
 }
 
@@ -498,8 +495,7 @@ async function sendPositionsResult(chatId, locale, user, deviceId, messageId = n
       [{ text: t(locale, "btn_home"), callback_data: "nav:home" }]
     ]
   };
-
-  await sendOrEditPlainText(chatId, messageId, out, { reply_markup: keyboard });
+  await sendOrEditMarkdown(chatId, messageId, out, { reply_markup: keyboard });
 }
 
 async function sendReportsMenu(chatId, locale, user, deviceId, messageId = null) {
@@ -685,13 +681,13 @@ async function handleCallbackAction(chatId, data, locale, user, messageId) {
 
       case "engine":
         if (params[0] === "on" || params[0] === "off") {
-          await executeEngineCommand(chatId, locale, user, params[1], params[0]);
+          await sendEngineConfirmation(chatId, locale, user, params[1], params[0], messageId);
         }
         break;
 
       case "confirm":
         if (params[0] === "engine" && (params[1] === "on" || params[1] === "off")) {
-          await sendEngineConfirmation(chatId, locale, user, params[2], params[1], messageId);
+          await executeEngineCommand(chatId, locale, user, params[2], params[1]);
         }
         break;
 

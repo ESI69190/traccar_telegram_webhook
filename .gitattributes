@@ -1,0 +1,4 @@
+# These legacy files are stored with CRLF in the repository.
+# Let diff --check treat the carriage return as end-of-line, not trailing whitespace.
+services/telegram.js whitespace=cr-at-eol
+services/i18n.js whitespace=cr-at-eol
