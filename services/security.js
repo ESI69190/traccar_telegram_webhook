@@ -267,6 +267,17 @@ export function redactPhone(phone) {
 }
 
 /**
+ * Sanitize a value before including it in a log entry.
+ * Replaces line breaks/control characters that could enable log injection
+ * through user-provided data, and caps the length to avoid log flooding.
+ */
+export function safeLog(value, maxLength = 200) {
+  let s = String(value ?? "").replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, " ");
+  if (s.length > maxLength) s = s.slice(0, maxLength) + "...";
+  return s;
+}
+
+/**
  * Escape characters reserved by Telegram MarkdownV2.
  * Only dynamic/user-controlled values should be passed through this helper;
  * intentional Markdown formatting in static templates must remain unescaped.

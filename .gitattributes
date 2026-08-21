@@ -2,3 +2,6 @@
 # Let diff --check treat the carriage return as end-of-line, not trailing whitespace.
 services/telegram.js whitespace=cr-at-eol
 services/i18n.js whitespace=cr-at-eol
+controllers/orders.js whitespace=cr-at-eol
+router/miniapp.js whitespace=cr-at-eol
+public/miniapp.html whitespace=cr-at-eol

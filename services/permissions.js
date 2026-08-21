@@ -1,5 +1,6 @@
 // services/permissions.js
 import { traccarRequest } from "./traccar.js";
+import { safeLog } from "./security.js";
 
 /**
  * Get devices accessible to a Telegram user by resolving their Traccar user
@@ -60,7 +61,7 @@ export async function findDeviceByIdForUser(chatId, userId, rawDeviceId) {
   const deviceId = Number(rawDeviceId);
 
   if (!Number.isInteger(deviceId) || deviceId <= 0) {
-    console.log("[permissions] Invalid deviceId for lookup:", rawDeviceId);
+    console.log("[permissions] Invalid deviceId for lookup:", safeLog(rawDeviceId));
     return null;
   }
 

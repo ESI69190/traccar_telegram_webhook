@@ -1,9 +1,59 @@
 // router/miniapp.js
-import { validateInitData, getInitDataMaxAge, getInitDataFutureTolerance } from "../services/telegramInitData.js";
-import { findUserByEmail, findUserByPhone, getUserById, updateUserPhoneAndChat, verifySession } from "../services/traccar.js";
-import { normalizePhone, isValidEmail } from "../services/security.js";
+import {
+  validateInitData,
+  getInitDataMaxAge,
+  getInitDataFutureTolerance
+} from "../services/telegramInitData.js";
+import {
+  findUserByEmail,
+  findUserByPhone,
+  getUserById,
+  updateUserPhoneAndChat,
+  verifySession
+} from "../services/traccar.js";
+import { normalizePhone, isValidEmail, safeLog } from "../services/security.js";
 import { getUserLocale, t } from "../services/i18n.js";
 import { telegramSendMessage } from "../services/telegram.js";
+
+const MAX_INIT_DATA_LENGTH = 8192;
+const MAX_IDENTIFIER_LENGTH = 256;
+const MAX_PASSWORD_LENGTH = 256;
+
+/**
+ * Server-side validation of the raw request body. The returned `ok` flag is
+ * computed by this function from the request payload and is the only
+ * condition that controls the subsequent (sensitive) authentication flow,
+ * so an end user cannot select an authentication path with raw input.
+ */
+export function validateAssociateRequest(body) {
+  if (!body || typeof body !== "object") {
+    return { ok: false, error: "invalid_request_body" };
+  }
+
+  const { initData, identifier, password } = body;
+
+  if (!initData || typeof initData !== "string") {
+    return { ok: false, error: "missing_init_data" };
+  }
+  if (!identifier || typeof identifier !== "string") {
+    return { ok: false, error: "missing_identifier" };
+  }
+  if (!password || typeof password !== "string") {
+    return { ok: false, error: "missing_password" };
+  }
+
+  if (initData.length > MAX_INIT_DATA_LENGTH) {
+    return { ok: false, error: "init_data_too_large" };
+  }
+  if (identifier.length > MAX_IDENTIFIER_LENGTH) {
+    return { ok: false, error: "identifier_too_long" };
+  }
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    return { ok: false, error: "password_too_long" };
+  }
+
+  return { ok: true, initData, identifier, password, error: null };
+}
 
 /**
  * Handle Mini App association request.
@@ -13,54 +63,36 @@ import { telegramSendMessage } from "../services/telegram.js";
 export async function handleMiniAppAssociate(req, res) {
   const BOT_TOKEN = process.env.BOT_TOKEN;
   try {
-    // Validate Content-Type
     const contentType = req.headers["content-type"] || "";
     if (!contentType.includes("application/json")) {
       return res.status(400).json({ ok: false, error: "invalid_content_type" });
     }
 
-    // Validate request body size (conservative limit)
-    const body = req.body;
-    if (!body || typeof body !== "object") {
-      return res.status(400).json({ ok: false, error: "invalid_request_body" });
+    const validation = validateAssociateRequest(req.body);
+    if (!validation.ok) {
+      return res.status(400).json({ ok: false, error: validation.error });
     }
+    const { initData, identifier, password } = validation;
 
-    const { initData, identifier, password } = body;
-
-    // Validate required fields
-    if (!initData || typeof initData !== "string") {
-      return res.status(400).json({ ok: false, error: "missing_init_data" });
-    }
-    if (!identifier || typeof identifier !== "string") {
-      return res.status(400).json({ ok: false, error: "missing_identifier" });
-    }
-    if (!password || typeof password !== "string") {
-      return res.status(400).json({ ok: false, error: "missing_password" });
-    }
-
-    // Conservative field length limits
-    if (initData.length > 8192) {
-      return res.status(400).json({ ok: false, error: "init_data_too_large" });
-    }
-    if (identifier.length > 256) {
-      return res.status(400).json({ ok: false, error: "identifier_too_long" });
-    }
-    if (password.length > 256) {
-      return res.status(400).json({ ok: false, error: "password_too_long" });
-    }
-
-    // Validate initData
+    // Validate initData (cryptographic, server-side check)
     const maxAge = getInitDataMaxAge();
     const futureTolerance = getInitDataFutureTolerance();
-    const validation = validateInitData(initData, BOT_TOKEN, maxAge, futureTolerance);
+    const initDataValidation = validateInitData(
+      initData,
+      BOT_TOKEN,
+      maxAge,
+      futureTolerance
+    );
 
-    if (!validation.ok) {
-      // Log sanitized error (no initData, no credentials)
-      console.warn("Mini App initData validation failed:", validation.error);
+    if (!initDataValidation.ok) {
+      console.warn(
+        "Mini App initData validation failed:",
+        safeLog(initDataValidation.error)
+      );
       return res.status(401).json({ ok: false, error: "invalid_telegram_session" });
     }
 
-    const telegramUser = validation.user;
+    const telegramUser = initDataValidation.user;
     const telegramUserId = String(telegramUser.id);
     const telegramLanguageCode = telegramUser.language_code || null;
 
@@ -98,10 +130,23 @@ export async function handleMiniAppAssociate(req, res) {
 
     // Reassociation protection: check if user already has a different telegramChatId
     const existingChatId = user.attributes?.telegramChatId;
-    console.debug("[miniapp] existingChatId:", existingChatId, "telegramUserId:", telegramUserId, "user.attributes:", user.attributes);
+    console.debug(
+      "[miniapp] existingChatId:",
+      safeLog(existingChatId),
+      "telegramUserId:",
+      safeLog(telegramUserId),
+      "user.attributes:",
+      safeLog(user.attributes)
+    );
     if (existingChatId && String(existingChatId) !== telegramUserId) {
-      // Different Telegram user already associated - reject
-      console.warn("Reassociation attempt rejected: user", user.id, "has chatId", existingChatId, "but Telegram user is", telegramUserId);
+      console.warn(
+        "Reassociation attempt rejected: user",
+        safeLog(user.id),
+        "has chatId",
+        safeLog(existingChatId),
+        "but Telegram user is",
+        safeLog(telegramUserId)
+      );
       return res.status(409).json({ ok: false, error: "already_associated" });
     }
 
@@ -114,9 +159,9 @@ export async function handleMiniAppAssociate(req, res) {
     // Associate: update user with phone and telegramChatId
     const phoneToSet = user.phone || "";
     const upd = await updateUserPhoneAndChat(user.id, phoneToSet, telegramUserId);
-    
+
     if (!upd.ok) {
-      console.error("Failed to update user association:", upd.reason);
+      console.error("Failed to update user association:", safeLog(upd.reason));
       return res.status(500).json({ ok: false, error: "association_failed" });
     }
 
@@ -125,15 +170,19 @@ export async function handleMiniAppAssociate(req, res) {
 
     // Send success message to Telegram user
     try {
-      await telegramSendMessage(telegramUserId, t(locale, "miniapp_assoc_success"), { parse_mode: "MarkdownV2" });
+      await telegramSendMessage(
+        telegramUserId,
+        t(locale, "miniapp_assoc_success"),
+        { parse_mode: "MarkdownV2" }
+      );
     } catch (e) {
       // Non-fatal: association succeeded but notification failed
-      console.warn("Failed to send Telegram notification:", e?.toString());
+      console.warn("Failed to send Telegram notification:", safeLog(e?.toString()));
     }
 
     return res.json({ ok: true, message: "association_successful" });
   } catch (e) {
-    console.error("handleMiniAppAssociate error:", e?.toString());
+    console.error("handleMiniAppAssociate error:", safeLog(e?.toString()));
     return res.status(500).json({ ok: false, error: "internal_error" });
   }
 }
