@@ -1,18 +1,31 @@
 // services/callbackRouter.js
-import { findUserByChatId, getLastPositions } from "./traccar.js";
+//
+// Callback routing is delegated to the central callbackData module
+// (services/callbackData.js). All device-scoped callbacks use the schema:
+//
+//   cmd:<kind>:<deviceId>[:subtype[:subtype2...]]
+//
+// The Traccar numeric device id is ALWAYS carried in the dedicated field
+// (position 2) and parsed explicitly, so "custom" / "engine" / "on" / "off"
+// can never be interpreted as a device id. Legacy callbacks without the
+// "cmd" prefix are preserved only for the fixed formats that were
+// guaranteed to carry a numeric device id; ambiguous strings such as
+// "commands:custom:123" are never accepted.
+import { findUserByChatId, getLastPositions, traccarRequest } from "./traccar.js";
 import { getDevicesForUser, findDeviceByIdForUser } from "./permissions.js";
-import { telegramSendMessage, sendPlainText, editPlainText, answerCallbackQuery, editMessageText, editMessageReplyMarkup } from "./telegram.js";
+import {
+  telegramSendMessage, sendPlainText, editPlainText, answerCallbackQuery, editMessageText, editMessageReplyMarkup
+} from "./telegram.js";
 import { getUserLocale, t } from "./i18n.js";
-import { formatDate, escapeMarkdown, markdownLink, MAX_LIMIT } from "./security.js";
-import { handleTrack } from "../controllers/track.js";
-import { handleHistory } from "../controllers/history.js";
-import { handleStatus } from "../controllers/status.js";
+import { formatDate, escapeMarkdown, markdownLink } from "./security.js";
 import { executeEngineAction } from "../controllers/engine.js";
-import { handleCommands } from "../controllers/commands.js";
-import handleOrders from "../controllers/orders.js";
-import { handlePositions } from "../controllers/positions.js";
-import { handleReports } from "../controllers/reports.js";
 import { buildLocalizedWebAppUrl } from "../controllers/assoc.js";
+import {
+  encodeDeviceCallback,
+  parseCallbackData,
+  validateCallbackData,
+  cleanDeviceId
+} from "./callbackData.js";
 
 const SENSITIVE_ATTRS = new Set([
   "telegramOwner",
@@ -22,51 +35,12 @@ const SENSITIVE_ATTRS = new Set([
   "secret"
 ]);
 
-// Callback data format: action:param1:param2:...
-// Examples:
-// menu:main
-// device:list
-// device:select:123
-// track:123
-// track:refresh:123
-// history:123
-// history:today:123
-// history:24h:123
-// history:7d:123
-// status:123
-// status:refresh:123
-// commands:123
-// engine:on:123
-// engine:off:123
-// confirm:engine:on:123
-// confirm:engine:off:123
-// orders:list
-// positions:123
-// reports:route:123
-// language
-// language:set:fr
-// nav:home
-// nav:back
-// cancel
-
-function parseCallbackData(data) {
-  if (!data || typeof data !== "string") return null;
-  const parts = data.split(":");
-  return {
-    action: parts[0],
-    params: parts.slice(1)
-  };
-}
-
-function validateCallbackData(parsed) {
-  if (!parsed || !parsed.action) return false;
-  const validActions = new Set([
-    "menu", "device", "track", "history", "status", "commands",
-    "engine", "confirm", "orders", "positions", "reports",
-    "language", "nav", "cancel", "assoc"
-  ]);
-  return validActions.has(parsed.action);
-}
+const HISTORY_RANGES = new Set(["recent", "today", "24h", "7d"]);
+const DEVICE_KINDS = new Set([
+  "commands", "custom", "engine", "track", "history", "status",
+  "positions", "reports", "confirm"
+]);
+const MAX_CUSTOM_COMMANDS = 8;
 
 async function getUserAndLocale(chatId, telegramLanguageCode) {
   const user = await findUserByChatId(chatId);
@@ -74,34 +48,23 @@ async function getUserAndLocale(chatId, telegramLanguageCode) {
   return { user, locale };
 }
 
-/**
- * Send or edit a plain-text message (localized/raw strings).
- * Automatically escapes the text for MarkdownV2.
- */
 async function sendOrEditPlainText(chatId, messageId, text, options = {}) {
   if (messageId) {
     return editPlainText(chatId, messageId, text, options);
-  } else {
-    return sendPlainText(chatId, text, options);
   }
+  return sendPlainText(chatId, text, options);
 }
 
-/**
- * Send or edit an intentionally formatted MarkdownV2 message.
- * The caller is responsible for ensuring the text is properly escaped.
- */
 async function sendOrEditMarkdown(chatId, messageId, text, options = {}) {
   const payload = { parse_mode: "MarkdownV2", ...options };
   if (messageId) {
     return editMessageText(chatId, messageId, text, payload);
-  } else {
-    return telegramSendMessage(chatId, text, payload);
   }
+  return telegramSendMessage(chatId, text, payload);
 }
 
 async function sendMainMenu(chatId, locale, user, messageId = null) {
   const isAssociated = !!user;
-
   let keyboard;
   let text;
 
@@ -147,7 +110,6 @@ async function sendMainMenu(chatId, locale, user, messageId = null) {
       ]
     };
 
-    // If no webapp URL, show error message instead
     if (!webAppUrl) {
       text = t(locale, "miniapp_error_config");
     }
@@ -170,22 +132,18 @@ async function sendDeviceSelector(chatId, locale, user, messageId, targetAction)
     return;
   }
 
-  // Single device optimization - go directly to action
   if (devices.length === 1) {
     const device = devices[0];
-    // Route directly to the target action with this device
-    const callbackData = `${targetAction}:${device.id}`;
-    // Simulate the callback by calling the handler directly
+    const callbackData = encodeDeviceCallback(targetAction, device.id);
     await handleCallbackAction(chatId, callbackData, locale, user, messageId);
     return;
   }
 
-  // Multiple devices - show selector
   const text = t(locale, "menu_choose_device");
   const keyboard = {
-    inline_keyboard: devices.map(d => [{
+    inline_keyboard: devices.map((d) => [{
       text: d.name || d.uniqueId || `id:${d.id}`,
-      callback_data: `${targetAction}:${d.id}`
+      callback_data: encodeDeviceCallback(targetAction, d.id)
     }]).concat([[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]])
   };
 
@@ -239,12 +197,12 @@ async function sendTrackResult(chatId, locale, user, deviceId, messageId = null)
   const keyboard = {
     inline_keyboard: [
       [
-        { text: t(locale, "btn_refresh"), callback_data: `track:refresh:${deviceId}` },
-        { text: t(locale, "btn_history"), callback_data: `history:${deviceId}` }
+        { text: t(locale, "btn_refresh"), callback_data: encodeDeviceCallback("track", deviceId, "refresh") },
+        { text: t(locale, "btn_history"), callback_data: encodeDeviceCallback("history", deviceId) }
       ],
       [
-        { text: t(locale, "btn_status"), callback_data: `status:${deviceId}` },
-        { text: t(locale, "btn_commands"), callback_data: `commands:${deviceId}` }
+        { text: t(locale, "btn_status"), callback_data: encodeDeviceCallback("status", deviceId) },
+        { text: t(locale, "btn_commands"), callback_data: encodeDeviceCallback("commands", deviceId) }
       ],
       [
         { text: t(locale, "btn_back"), callback_data: "device:list:track" },
@@ -268,11 +226,11 @@ async function sendHistoryMenu(chatId, locale, user, deviceId, messageId = null)
   const text = t(locale, "history_choose_range");
   const keyboard = {
     inline_keyboard: [
-      [{ text: t(locale, "btn_history_recent"), callback_data: `history:recent:${deviceId}` }],
-      [{ text: t(locale, "btn_history_today"), callback_data: `history:today:${deviceId}` }],
-      [{ text: t(locale, "btn_history_24h"), callback_data: `history:24h:${deviceId}` }],
-      [{ text: t(locale, "btn_history_7d"), callback_data: `history:7d:${deviceId}` }],
-      [{ text: t(locale, "btn_back"), callback_data: `device:list:history` }, { text: t(locale, "btn_home"), callback_data: "nav:home" }]
+      [{ text: t(locale, "btn_history_recent"), callback_data: encodeDeviceCallback("history", deviceId, "recent") }],
+      [{ text: t(locale, "btn_history_today"), callback_data: encodeDeviceCallback("history", deviceId, "today") }],
+      [{ text: t(locale, "btn_history_24h"), callback_data: encodeDeviceCallback("history", deviceId, "24h") }],
+      [{ text: t(locale, "btn_history_7d"), callback_data: encodeDeviceCallback("history", deviceId, "7d") }],
+      [{ text: t(locale, "btn_back"), callback_data: "device:list:history" }, { text: t(locale, "btn_home"), callback_data: "nav:home" }]
     ]
   };
 
@@ -313,8 +271,8 @@ async function sendHistoryResult(chatId, locale, user, deviceId, range, messageI
 
   const keyboard = {
     inline_keyboard: [
-      [{ text: t(locale, "btn_refresh"), callback_data: `history:${range}:${deviceId}` }],
-      [{ text: t(locale, "btn_back"), callback_data: `history:${deviceId}` }],
+      [{ text: t(locale, "btn_refresh"), callback_data: encodeDeviceCallback("history", deviceId, range) }],
+      [{ text: t(locale, "btn_back"), callback_data: encodeDeviceCallback("history", deviceId) }],
       [{ text: t(locale, "btn_home"), callback_data: "nav:home" }]
     ]
   };
@@ -368,12 +326,12 @@ async function sendStatusResult(chatId, locale, user, deviceId, messageId = null
   const keyboard = {
     inline_keyboard: [
       [
-        { text: t(locale, "btn_refresh"), callback_data: `status:refresh:${deviceId}` },
-        { text: t(locale, "btn_track"), callback_data: `track:${deviceId}` }
+        { text: t(locale, "btn_refresh"), callback_data: encodeDeviceCallback("status", deviceId, "refresh") },
+        { text: t(locale, "btn_track"), callback_data: encodeDeviceCallback("track", deviceId) }
       ],
       [
-        { text: t(locale, "btn_commands"), callback_data: `commands:${deviceId}` },
-        { text: t(locale, "btn_engine"), callback_data: `engine:on:${deviceId}` }
+        { text: t(locale, "btn_commands"), callback_data: encodeDeviceCallback("commands", deviceId) },
+        { text: t(locale, "btn_engine"), callback_data: encodeDeviceCallback("engine", deviceId, "on") }
       ],
       [
         { text: t(locale, "btn_back"), callback_data: "device:list:status" },
@@ -397,12 +355,84 @@ async function sendCommandsMenu(chatId, locale, user, deviceId, messageId = null
   const text = t(locale, "commands_choose_type");
   const keyboard = {
     inline_keyboard: [
-      [{ text: t(locale, "btn_custom_command"), callback_data: `commands:custom:${deviceId}` }],
-      [{ text: t(locale, "btn_back"), callback_data: `device:list:commands` }, { text: t(locale, "btn_home"), callback_data: "nav:home" }]
+      [{ text: t(locale, "btn_custom_command"), callback_data: encodeDeviceCallback("commands", deviceId, "custom") }],
+      [{ text: t(locale, "btn_back"), callback_data: "device:list:commands" }, { text: t(locale, "btn_home"), callback_data: "nav:home" }]
     ]
   };
 
   await sendOrEditPlainText(chatId, messageId, text, { reply_markup: keyboard });
+}
+
+async function sendCustomCommandPicker(chatId, locale, user, deviceId, messageId = null) {
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
+  if (!device) {
+    const text = t(locale, "track_device_not_found") + deviceId;
+    const keyboard = { inline_keyboard: [[{ text: t(locale, "btn_back"), callback_data: "nav:home" }]] };
+    await sendOrEditPlainText(chatId, messageId, text, { reply_markup: keyboard });
+    return;
+  }
+
+  let types = [];
+  try {
+    const resp = await traccarRequest("get", "/api/commands/types", null, { deviceId: device.id });
+    if (resp.status >= 200 && resp.status < 300 && Array.isArray(resp.data)) {
+      types = resp.data.filter((p) => typeof p === "string" && /^[A-Za-z0-9_]+$/.test(p));
+    }
+  } catch (e) {
+    types = [];
+  }
+
+  if (!types.length) {
+    const text = t(locale, "commands_custom_unavailable") + "\n" + t(locale, "commands_usage");
+    const keyboard = {
+      inline_keyboard: [
+        [{ text: t(locale, "btn_back"), callback_data: encodeDeviceCallback("commands", deviceId) }],
+        [{ text: t(locale, "btn_home"), callback_data: "nav:home" }]
+      ]
+    };
+    await sendOrEditPlainText(chatId, messageId, text, { reply_markup: keyboard });
+    return;
+  }
+
+  const shown = types.slice(0, MAX_CUSTOM_COMMANDS);
+  const text = t(locale, "commands_custom_prompt", { device: device.name || device.uniqueId });
+  const keyboard = {
+    inline_keyboard: shown.map((type) => [{
+      text: type,
+      callback_data: encodeDeviceCallback("custom", deviceId, "exec:" + type)
+    }]).concat([
+      [{ text: t(locale, "btn_back"), callback_data: encodeDeviceCallback("commands", deviceId) }],
+      [{ text: t(locale, "btn_home"), callback_data: "nav:home" }]
+    ])
+  };
+
+  await sendOrEditPlainText(chatId, messageId, text, { reply_markup: keyboard });
+}
+
+async function executeCustomCommand(chatId, locale, user, deviceId, commandType) {
+  if (!commandType) {
+    await sendPlainText(chatId, t(locale, "commands_usage"));
+    return;
+  }
+  const type = String(commandType).trim();
+  if (!/^[A-Za-z0-9_]+$/.test(type)) {
+    await sendPlainText(chatId, t(locale, "commands_usage"));
+    return;
+  }
+
+  const device = await findDeviceByIdForUser(chatId, user.id, deviceId);
+  if (!device) {
+    await sendPlainText(chatId, t(locale, "track_device_not_found") + deviceId);
+    return;
+  }
+
+  const cmd = { deviceId: device.id, type, attributes: {} };
+  const resp = await traccarRequest("post", "/api/commands/send", cmd);
+  if (resp.status >= 200 && resp.status < 300) {
+    await sendPlainText(chatId, t(locale, "command_sent"));
+  } else {
+    await sendPlainText(chatId, t(locale, "command_failed"));
+  }
 }
 
 async function sendEngineConfirmation(chatId, locale, user, deviceId, action, messageId = null) {
@@ -419,10 +449,10 @@ async function sendEngineConfirmation(chatId, locale, user, deviceId, action, me
   const keyboard = {
     inline_keyboard: [
       [
-        { text: t(locale, "btn_yes"), callback_data: `confirm:engine:${action}:${deviceId}` },
-        { text: t(locale, "btn_no"), callback_data: `commands:${deviceId}` }
+        { text: t(locale, "btn_yes"), callback_data: encodeDeviceCallback("confirm", deviceId, "engine:" + action) },
+        { text: t(locale, "btn_no"), callback_data: encodeDeviceCallback("commands", deviceId) }
       ],
-      [{ text: t(locale, "btn_back"), callback_data: `commands:${deviceId}` }]
+      [{ text: t(locale, "btn_back"), callback_data: encodeDeviceCallback("commands", deviceId) }]
     ]
   };
 
@@ -490,7 +520,7 @@ async function sendPositionsResult(chatId, locale, user, deviceId, messageId = n
 
   const keyboard = {
     inline_keyboard: [
-      [{ text: t(locale, "btn_refresh"), callback_data: `positions:${deviceId}` }],
+      [{ text: t(locale, "btn_refresh"), callback_data: encodeDeviceCallback("positions", deviceId) }],
       [{ text: t(locale, "btn_back"), callback_data: "device:list:positions" }],
       [{ text: t(locale, "btn_home"), callback_data: "nav:home" }]
     ]
@@ -510,9 +540,9 @@ async function sendReportsMenu(chatId, locale, user, deviceId, messageId = null)
   const text = t(locale, "reports_choose_type");
   const keyboard = {
     inline_keyboard: [
-      [{ text: t(locale, "btn_report_route"), callback_data: `reports:route:${deviceId}` }],
-      [{ text: t(locale, "btn_report_stops"), callback_data: `reports:stops:${deviceId}` }],
-      [{ text: t(locale, "btn_report_summary"), callback_data: `reports:summary:${deviceId}` }],
+      [{ text: t(locale, "btn_report_route"), callback_data: encodeDeviceCallback("reports", deviceId, "route") }],
+      [{ text: t(locale, "btn_report_stops"), callback_data: encodeDeviceCallback("reports", deviceId, "stops") }],
+      [{ text: t(locale, "btn_report_summary"), callback_data: encodeDeviceCallback("reports", deviceId, "summary") }],
       [{ text: t(locale, "btn_back"), callback_data: "device:list:reports" }, { text: t(locale, "btn_home"), callback_data: "nav:home" }]
     ]
   };
@@ -530,7 +560,6 @@ async function sendReportResult(chatId, locale, user, deviceId, reportType, mess
   }
 
   const { from, to } = computeTimeRange(7);
-  const { traccarRequest } = await import("./traccar.js");
   const resp = await traccarRequest("get", `/api/reports/${reportType}`, null, { deviceId: device.id, from, to });
 
   let out;
@@ -542,8 +571,8 @@ async function sendReportResult(chatId, locale, user, deviceId, reportType, mess
 
   const keyboard = {
     inline_keyboard: [
-      [{ text: t(locale, "btn_refresh"), callback_data: `reports:${reportType}:${deviceId}` }],
-      [{ text: t(locale, "btn_back"), callback_data: `reports:${deviceId}` }],
+      [{ text: t(locale, "btn_refresh"), callback_data: encodeDeviceCallback("reports", deviceId, reportType) }],
+      [{ text: t(locale, "btn_back"), callback_data: encodeDeviceCallback("reports", deviceId) }],
       [{ text: t(locale, "btn_home"), callback_data: "nav:home" }]
     ]
   };
@@ -612,14 +641,13 @@ export async function handleCallbackQuery(update) {
   const telegramLanguageCode = callbackQuery.from?.language_code || null;
   const data = callbackQuery.data;
 
-  // Acknowledge callback query immediately
   await answerCallbackQuery(callbackQuery.id);
 
   if (!chatId) return;
 
   const parsed = parseCallbackData(data);
   if (!validateCallbackData(parsed)) {
-    await sendPlainText(chatId, "Invalid action");
+    await sendPlainText(chatId, t("en", "invalid_action"));
     return;
   }
 
@@ -630,119 +658,268 @@ export async function handleCallbackQuery(update) {
 
 async function handleCallbackAction(chatId, data, locale, user, messageId) {
   const parsed = parseCallbackData(data);
-  const { action, params } = parsed;
+  if (!parsed) {
+    await sendPlainText(chatId, t(locale, "invalid_action"));
+    return;
+  }
 
+  // New deterministic schema: cmd:<kind>:<deviceId>[:subtype[:subtype2...]]
+  if (parsed.action === "cmd") {
+    await handleCmdKind(chatId, parsed, locale, user, messageId);
+    return;
+  }
+
+  const { action, params } = parsed;
   try {
     switch (action) {
       case "menu":
-        if (params[0] === "main") {
-          await sendMainMenu(chatId, locale, user, messageId);
-        }
+        if (params[0] === "main") await sendMainMenu(chatId, locale, user, messageId);
         break;
-
       case "device":
         if (params[0] === "list") {
-          const targetAction = params[1] || "track";
-          await sendDeviceSelector(chatId, locale, user, messageId, targetAction);
-        } else if (params[0] === "select") {
-          const deviceId = params[1];
-          const targetAction = params[2] || "track";
-          // This would be handled by the specific action handler
+          await sendDeviceSelector(chatId, locale, user, messageId, params[1] || "track");
         }
         break;
-
-      case "track":
-        if (params[0] === "refresh") {
-          await sendTrackResult(chatId, locale, user, params[1], messageId);
-        } else {
-          await sendTrackResult(chatId, locale, user, params[0], messageId);
-        }
-        break;
-
-      case "history":
-        if (params[0] === "recent" || params[0] === "today" || params[0] === "24h" || params[0] === "7d") {
-          await sendHistoryResult(chatId, locale, user, params[1], params[0], messageId);
-        } else {
-          await sendHistoryMenu(chatId, locale, user, params[0], messageId);
-        }
-        break;
-
-      case "status":
-        if (params[0] === "refresh") {
-          await sendStatusResult(chatId, locale, user, params[1], messageId);
-        } else {
-          await sendStatusResult(chatId, locale, user, params[0], messageId);
-        }
-        break;
-
-      case "commands":
-        await sendCommandsMenu(chatId, locale, user, params[0], messageId);
-        break;
-
-      case "engine":
-        if (params[0] === "on" || params[0] === "off") {
-          await sendEngineConfirmation(chatId, locale, user, params[1], params[0], messageId);
-        }
-        break;
-
-      case "confirm":
-        if (params[0] === "engine" && (params[1] === "on" || params[1] === "off")) {
-          await executeEngineCommand(chatId, locale, user, params[2], params[1]);
-        }
-        break;
-
       case "orders":
         if (params[0] === "list") {
           await sendOrdersMenu(chatId, locale, user, messageId);
         }
         break;
-
-      case "positions":
-        await sendPositionsResult(chatId, locale, user, params[0], messageId);
-        break;
-
-      case "reports":
-        if (params[1]) {
-          await sendReportResult(chatId, locale, user, params[1], params[0], messageId);
-        } else {
-          await sendReportsMenu(chatId, locale, user, params[0], messageId);
-        }
-        break;
-
       case "language":
         if (params[0] === "set") {
-          // Language is determined by Telegram, just show confirmation
           await sendPlainText(chatId, t(locale, "language_set_info", { lang: params[1] }));
           await sendMainMenu(chatId, locale, user, messageId);
         } else {
           await sendLanguageMenu(chatId, locale, messageId);
         }
         break;
-
       case "nav":
-        if (params[0] === "home") {
-          await sendMainMenu(chatId, locale, user, messageId);
-        } else if (params[0] === "back") {
+        if (params[0] === "home" || params[0] === "back") {
           await sendMainMenu(chatId, locale, user, messageId);
         } else if (params[0] === "help") {
           await sendHelpMenu(chatId, locale, messageId);
         }
         break;
-
+      case "track":
+      case "history":
+      case "status":
+      case "commands":
+      case "engine":
+      case "confirm":
+      case "positions":
+      case "reports":
+        await handleLegacyDeviceAction(chatId, action, params, locale, user, messageId);
+        break;
       case "cancel":
         await sendMainMenu(chatId, locale, user, messageId);
         break;
-
       case "assoc":
-        // Handled by existing assoc controller
         break;
-
       default:
         await sendPlainText(chatId, t(locale, "invalid_action"));
     }
   } catch (error) {
     console.error("Callback action error:", error);
     await sendPlainText(chatId, t(locale, "generic_error"));
+  }
+}
+
+async function handleCmdKind(chatId, parsed, locale, user, messageId) {
+  const { kind, deviceId, deviceIdValid, subtype, subtype2 } = parsed;
+
+  // Validate BEFORE any permission/device lookup. Only a valid positive
+  // numeric Traccar device id is accepted. "custom", "engine", "command",
+  // "on", "off" etc. are never treated as a device id.
+  if (!DEVICE_KINDS.has(kind) || !deviceIdValid || deviceId === null || deviceId === undefined) {
+    await sendPlainText(chatId, t(locale, "invalid_action"));
+    return;
+  }
+
+  try {
+    switch (kind) {
+      case "commands":
+        if (subtype === "custom") {
+          await sendCustomCommandPicker(chatId, locale, user, deviceId, messageId);
+        } else {
+          await sendCommandsMenu(chatId, locale, user, deviceId, messageId);
+        }
+        break;
+      case "custom":
+        if (subtype === "exec") {
+          await executeCustomCommand(chatId, locale, user, deviceId, subtype2);
+        } else {
+          await sendCustomCommandPicker(chatId, locale, user, deviceId, messageId);
+        }
+        break;
+      case "engine":
+        if (subtype === "on" || subtype === "off") {
+          await sendEngineConfirmation(chatId, locale, user, deviceId, subtype, messageId);
+        } else {
+          await sendPlainText(chatId, t(locale, "invalid_action"));
+        }
+        break;
+      case "confirm": {
+        // The parser splits "engine:on" into subtype="engine" + subtype2="on",
+        // so the confirmation subtype must be reassembled before matching.
+        const confirmSubtype = subtype2 ? `${subtype}:${subtype2}` : subtype;
+        const engineMatch = /^engine:(on|off)$/.exec(confirmSubtype);
+        if (engineMatch) {
+          await executeEngineCommand(chatId, locale, user, deviceId, engineMatch[1]);
+        } else {
+          await sendPlainText(chatId, t(locale, "invalid_action"));
+        }
+        break;
+      }
+      case "track":
+        await sendTrackResult(chatId, locale, user, deviceId, messageId);
+        break;
+      case "history":
+        if (HISTORY_RANGES.has(subtype)) {
+          await sendHistoryResult(chatId, locale, user, deviceId, subtype, messageId);
+        } else {
+          await sendHistoryMenu(chatId, locale, user, deviceId, messageId);
+        }
+        break;
+      case "status":
+        await sendStatusResult(chatId, locale, user, deviceId, messageId);
+        break;
+      case "positions":
+        await sendPositionsResult(chatId, locale, user, deviceId, messageId);
+        break;
+      case "reports":
+        if (subtype) {
+          await sendReportResult(chatId, locale, user, deviceId, subtype, messageId);
+        } else {
+          await sendReportsMenu(chatId, locale, user, deviceId, messageId);
+        }
+        break;
+      default:
+        await sendPlainText(chatId, t(locale, "invalid_action"));
+    }
+  } catch (error) {
+    console.error("Callback cmd error:", error);
+    await sendPlainText(chatId, t(locale, "generic_error"));
+  }
+}
+
+/**
+ * Legacy fixed-schema device callbacks. The device id is validated as a
+ * numeric Traccar id BEFORE any permission lookup; "custom"/"engine"/
+ * "command" and other non-numeric tokens are rejected with invalid_action.
+ */
+async function handleLegacyDeviceAction(chatId, action, params, locale, user, messageId) {
+  let subtype = null;
+  let rawId = null;
+
+  switch (action) {
+    case "track":
+      if (params[0] === "refresh") {
+        subtype = "refresh";
+        rawId = params[1];
+      } else {
+        rawId = params[0];
+      }
+      break;
+    case "history": {
+      const first = params[0];
+      if (HISTORY_RANGES.has(first)) {
+        subtype = first;
+        rawId = params[1];
+      } else {
+        rawId = params[0];
+      }
+      break;
+    }
+    case "status":
+      if (params[0] === "refresh") {
+        subtype = "refresh";
+        rawId = params[1];
+      } else {
+        rawId = params[0];
+      }
+      break;
+    case "commands":
+      rawId = params[0];
+      break;
+    case "engine":
+      if (params[0] === "on" || params[0] === "off") {
+        subtype = params[0];
+        rawId = params[1];
+      }
+      break;
+    case "confirm":
+      if (params[0] === "engine" && (params[1] === "on" || params[1] === "off")) {
+        subtype = "engine:" + params[1];
+        rawId = params[2];
+      }
+      break;
+    case "positions":
+      rawId = params[0];
+      break;
+    case "reports":
+      if (params[1]) {
+        subtype = params[0];
+        rawId = params[1];
+      } else {
+        rawId = params[0];
+      }
+      break;
+    default:
+      await sendPlainText(chatId, t(locale, "invalid_action"));
+      return;
+  }
+
+  const deviceId = cleanDeviceId(rawId);
+  if (deviceId === null) {
+    await sendPlainText(chatId, t(locale, "invalid_action"));
+    return;
+  }
+
+  switch (action) {
+    case "track":
+      await sendTrackResult(chatId, locale, user, deviceId, messageId);
+      break;
+    case "history":
+      if (subtype) {
+        await sendHistoryResult(chatId, locale, user, deviceId, subtype, messageId);
+      } else {
+        await sendHistoryMenu(chatId, locale, user, deviceId, messageId);
+      }
+      break;
+    case "status":
+      await sendStatusResult(chatId, locale, user, deviceId, messageId);
+      break;
+    case "commands":
+      await sendCommandsMenu(chatId, locale, user, deviceId, messageId);
+      break;
+    case "engine":
+      if (subtype === "on" || subtype === "off") {
+        await sendEngineConfirmation(chatId, locale, user, deviceId, subtype, messageId);
+      } else {
+        await sendPlainText(chatId, t(locale, "invalid_action"));
+      }
+      break;
+    case "confirm":
+      if (subtype === "engine:on") {
+        await executeEngineCommand(chatId, locale, user, deviceId, "on");
+      } else if (subtype === "engine:off") {
+        await executeEngineCommand(chatId, locale, user, deviceId, "off");
+      } else {
+        await sendPlainText(chatId, t(locale, "invalid_action"));
+      }
+      break;
+    case "positions":
+      await sendPositionsResult(chatId, locale, user, deviceId, messageId);
+      break;
+    case "reports":
+      if (subtype) {
+        await sendReportResult(chatId, locale, user, deviceId, subtype, messageId);
+      } else {
+        await sendReportsMenu(chatId, locale, user, deviceId, messageId);
+      }
+      break;
+    default:
+      await sendPlainText(chatId, t(locale, "invalid_action"));
   }
 }
 

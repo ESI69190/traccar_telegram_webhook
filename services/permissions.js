@@ -52,14 +52,28 @@ export async function findDeviceForUser(chatId, userId, identifier) {
 }
 
 /**
+ * Normalize a raw device id to a valid positive Traccar numeric id.
+ * Returns null when the raw value is not a positive integer (e.g. "custom",
+ * "engine", "command", "on", "off", "", "12.5", "-3").
+ */
+export function normalizeDeviceId(rawDeviceId) {
+  if (rawDeviceId === undefined || rawDeviceId === null) return null;
+  const str = String(rawDeviceId).trim();
+  if (!/^\d+$/.test(str)) return null;
+  const num = Number(str);
+  if (!Number.isSafeInteger(num) || num <= 0) return null;
+  return num;
+}
+
+/**
  * Find a single device accessible to the user by Traccar device ID.
  * Device IDs from callback data or internal lookups must be normalized
- * before comparison to avoid string vs number mismatches.
+ * before comparing to avoid string vs number mismatches.
  */
 export async function findDeviceByIdForUser(chatId, userId, rawDeviceId) {
-  const deviceId = Number(rawDeviceId);
+  const deviceId = normalizeDeviceId(rawDeviceId);
 
-  if (!Number.isInteger(deviceId) || deviceId <= 0) {
+  if (deviceId === null) {
     console.log("[permissions] Invalid deviceId for lookup");
     return null;
   }
