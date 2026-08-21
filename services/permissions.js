@@ -60,7 +60,7 @@ export async function findDeviceByIdForUser(chatId, userId, rawDeviceId) {
   const deviceId = Number(rawDeviceId);
 
   if (!Number.isInteger(deviceId) || deviceId <= 0) {
-    console.log("[permissions] Invalid deviceId for lookup:", rawDeviceId);
+    console.log("[permissions] Invalid deviceId for lookup");
     return null;
   }
 

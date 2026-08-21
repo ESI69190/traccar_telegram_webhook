@@ -229,7 +229,7 @@ export async function getBotCommands() {
 export async function telegramSendMessage(chatId, text, options) {
   if (!TELEGRAM_API) {
     console.warn(
-      "telegramSendMessage: BOT_TOKEN missing, message not sent: " + text
+      "telegramSendMessage: BOT_TOKEN missing, message not sent"
     );
     return null;
   }

@@ -483,8 +483,10 @@
         return;
       }
 
-      // Get backend URL from URL params or use relative
-      const backendUrl = urlParams.get('backend') || '/api/associate/miniapp';
+      // Use the same-origin endpoint. A configurable "backend" URL parameter
+      // would let a crafted Mini App link POST credentials to an arbitrary
+      // user-supplied host, so it is intentionally not supported.
+      const backendUrl = '/api/associate/miniapp';
 
       form.addEventListener('submit', async function(e) {
         e.preventDefault();
