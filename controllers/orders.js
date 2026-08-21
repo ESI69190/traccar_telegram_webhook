@@ -150,17 +150,9 @@ async function handleDeleteOrder(parts, user, chatId, locale) {
   }
 }
 
-const ORDER_HANDLERS = {
-  get: handleGetOrders,
-  create: handleCreateOrder,
-  update: handleUpdateOrder,
-  delete: handleDeleteOrder
-};
-
 export default async function handleOrders(chatId, text, locale) {
   const parts = text.split(/\s+/);
-  const action =
-    ORDER_HANDLERS[String(parts[1] || "").toLowerCase()] || null;
+  const action = String(parts[1] || "").toLowerCase();
 
   const user = await findUserByChatId(chatId);
   if (!user) {
@@ -168,10 +160,21 @@ export default async function handleOrders(chatId, text, locale) {
     return;
   }
 
-  if (!action) {
-    await sendPlainText(chatId, t(locale, "orders_usage"));
-    return;
+  switch (action) {
+    case "get":
+      await handleGetOrders(parts, user, chatId, locale);
+      return;
+    case "create":
+      await handleCreateOrder(parts, chatId, locale);
+      return;
+    case "update":
+      await handleUpdateOrder(parts, user, chatId, locale);
+      return;
+    case "delete":
+      await handleDeleteOrder(parts, user, chatId, locale);
+      return;
+    default:
+      await sendPlainText(chatId, t(locale, "orders_usage"));
+      return;
   }
-
-  await action(parts, user, chatId, locale);
 }

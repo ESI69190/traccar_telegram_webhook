@@ -1,6 +1,6 @@
 // services/telegram.js
 import axios from "axios";
-import { escapeMarkdown, safeLog } from "./security.js";
+import { escapeMarkdown } from "./security.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const TELEGRAM_API = BOT_TOKEN
@@ -229,8 +229,7 @@ export async function getBotCommands() {
 export async function telegramSendMessage(chatId, text, options) {
   if (!TELEGRAM_API) {
     console.warn(
-      "telegramSendMessage: BOT_TOKEN missing, message not sent: " +
-        safeLog(text)
+      "telegramSendMessage: BOT_TOKEN missing, message not sent"
     );
     return null;
   }

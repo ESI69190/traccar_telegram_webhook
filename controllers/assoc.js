@@ -5,7 +5,6 @@ import {
   isValidEmail,
   encryptAssocPassword,
   decryptAssocPassword,
-  redactPhone,
   escapeMarkdown,
   safeLog
 } from "../services/security.js";
@@ -194,12 +193,7 @@ async function handleLegacyAssoc(chatId, locale, text) {
 
 async function handleContactShare(chatId, phoneRaw, locale) {
   const phone = normalizePhone(phoneRaw);
-  console.log(
-    "Contact shared phone:",
-    safeLog(redactPhone(phone)),
-    "chatId:",
-    safeLog(chatId)
-  );
+  console.log("Contact shared phone: identifiers kept out of logs");
 
   if (!getAssocSecret()) {
     await sendPlainText(chatId, t(locale, "assoc_confirm_failed"));
